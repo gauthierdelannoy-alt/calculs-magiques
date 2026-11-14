@@ -54,6 +54,21 @@
     background:var(--c);color:#fff;cursor:pointer;box-shadow:0 6px 0 #4a9c55
   }
   .big:active{transform:translateY(4px);box-shadow:0 2px 0 #4a9c55}
+  .players{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+  .players .chip{display:flex;align-items:center;gap:8px;padding:10px 14px}
+  .players .chip.guest{border-style:dashed;flex-direction:column;gap:0;align-items:flex-start}
+  .players .chip.guest.sel{border-color:var(--q);background:#fff6d1;border-style:solid}
+  .players .x{font-size:14px;color:var(--muted);background:#eee;border-radius:10px;padding:2px 7px;font-weight:600}
+  .players .x.confirm{background:var(--a);color:#fff}
+  .addp{display:flex;gap:8px}
+  .addp input{flex:1;min-width:0;font:inherit;font-size:18px;border:3px solid #ece8f5;border-radius:16px;padding:10px 12px;color:var(--ink);background:#faf9ff}
+  .addp input:focus{outline:none;border-color:var(--b)}
+  .addp .add{flex:none}
+  .who{text-align:center;font-weight:600;color:var(--muted);font-size:17px;margin-top:-6px}
+  .board{background:#fff;border-radius:18px;box-shadow:var(--shadow);padding:10px 16px;margin:8px 0;min-width:240px;text-align:left}
+  .board h3{margin:0 0 6px;font-size:16px;color:var(--muted);font-weight:600;text-align:center}
+  .board div{display:flex;justify-content:space-between;gap:16px;font-size:18px;padding:3px 0}
+  .board div.me{color:var(--b);font-weight:700}
 
   /* Jeu */
   .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -126,6 +141,15 @@
     <p class="sub">Trouve le nombre qui se cache ! ✨</p>
 
     <div class="panel">
+      <h2>Qui joue ?</h2>
+      <div class="players" id="players"></div>
+      <form class="addp" id="addForm" autocomplete="off">
+        <input id="newName" maxlength="14" placeholder="Nouveau prénom…" enterkeyhint="done">
+        <button class="chip add" type="submit">＋ Ajouter</button>
+      </form>
+    </div>
+
+    <div class="panel">
       <h2>Quelle opération ?</h2>
       <div class="choices three" data-group="op">
         <button class="chip sel" data-v="add">➕<small>additions</small></button>
@@ -172,6 +196,7 @@
       <button class="icon-btn" id="speak">🔊</button>
       <button class="icon-btn" id="help">💡 Aide</button>
     </div>
+    <div class="who" id="who"></div>
     <div class="stars" id="stars"></div>
 
     <div class="question" id="question"></div>
@@ -192,6 +217,7 @@
     <p id="endText"></p>
     <div class="endtime" id="endTime"></div>
     <p id="endRecord"></p>
+    <div class="board" id="board" style="display:none"></div>
     <div class="stars" id="endStars" style="margin:12px 0"></div>
     <button class="big" id="again">Rejouer 🔁</button>
     <button class="icon-btn" id="menu2" style="margin-top:6px">Changer les réglages</button>
@@ -215,7 +241,62 @@
   function startTimer(){ stopTimer(); t0 = performance.now(); elapsed = 0; $('timer').textContent = '⏱️ 0:00';
     tick = setInterval(() => { elapsed = performance.now() - t0; $('timer').textContent = '⏱️ ' + fmt(elapsed); }, 250); }
   function stopTimer(){ if (tick) clearInterval(tick); tick = null; if (t0) elapsed = performance.now() - t0; }
-  const recKey = () => `calc-record-${cfg.op}-${cfg.mode}-${cfg.max}-${cfg.count}`;
+  const cfgKey = () => `${cfg.op}-${cfg.mode}-${cfg.max}-${cfg.count}`;
+
+  // ---- Joueurs (enregistrés dans cet appareil)
+  const store = {
+    get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+    set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  };
+  let players = store.get('calc-players', []);
+  let records = store.get('calc-records', {});          // { prénom: { réglage: ms } }
+  let player = store.get('calc-last-player', null);      // null = partie libre
+  if (player && !players.includes(player)) player = null;
+  let pendingDelete = null;
+
+  function renderPlayers(){
+    const box = $('players');
+    box.innerHTML = '';
+    players.forEach(p => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (player === p ? ' sel' : '');
+      b.innerHTML = `<span>😀 ${esc(p)}</span><span class="x${pendingDelete === p ? ' confirm' : ''}">${pendingDelete === p ? 'Supprimer ?' : '✕'}</span>`;
+      b.onclick = e => {
+        if (e.target.closest('.x')){
+          if (pendingDelete === p){
+            players = players.filter(x => x !== p); delete records[p];
+            store.set('calc-players', players); store.set('calc-records', records);
+            if (player === p) player = null;
+            pendingDelete = null;
+          } else pendingDelete = p;
+        } else { player = p; pendingDelete = null; beep(520,.06); }
+        store.set('calc-last-player', player);
+        renderPlayers();
+      };
+      box.appendChild(b);
+    });
+    const g = document.createElement('button');
+    g.type = 'button';
+    g.className = 'chip guest' + (player === null ? ' sel' : '');
+    g.innerHTML = '🎈 Juste pour jouer<small>rien n\'est enregistré</small>';
+    g.onclick = () => { player = null; pendingDelete = null; store.set('calc-last-player', null); beep(520,.06); renderPlayers(); };
+    box.appendChild(g);
+  }
+  const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  $('addForm').addEventListener('submit', e => {
+    e.preventDefault();
+    let n = $('newName').value.trim().replace(/\s+/g,' ');
+    if (!n) return;
+    n = n.charAt(0).toUpperCase() + n.slice(1);
+    const existing = players.find(p => p.toLowerCase() === n.toLowerCase());
+    if (!existing) { players.push(n); store.set('calc-players', players); }
+    player = existing || n;
+    store.set('calc-last-player', player);
+    $('newName').value = ''; $('newName').blur();
+    beep(660,.08); renderPlayers();
+  });
+  renderPlayers();
   let qs = [], idx = 0, input = '', tries = 0, firstTry = 0, locked = false, helpOn = false;
 
   // ---- Réglages
@@ -397,6 +478,7 @@
     for (let i = 0; i < cfg.count; i++) qs.push(makeQuestion(qs.slice(-4)));
     idx = 0; input = ''; tries = 0; firstTry = 0; locked = false; helpOn = false;
     $('msg').textContent = '';
+    $('who').textContent = player ? `😀 ${player}` : '🎈 Partie libre';
     show('game'); render(); beep(660,.1); startTimer();
     setTimeout(sayQuestion, 250);
   }
@@ -404,17 +486,30 @@
     show('end');
     const r = firstTry / qs.length;
     $('trophy').textContent = r === 1 ? '🏆' : r >= .7 ? '🥇' : r >= .4 ? '🥈' : '🎈';
-    $('endTitle').textContent = r === 1 ? 'Sans faute !' : r >= .7 ? 'Bravo champion !' : 'Bien joué !';
+    const title = r === 1 ? 'Sans faute' : r >= .7 ? (player ? 'Bravo' : 'Bravo champion') : 'Bien joué';
+    $('endTitle').textContent = player ? `${title} ${player} !` : `${title} !`;
     $('endText').textContent = `${firstTry} bonne${firstTry>1?'s':''} réponse${firstTry>1?'s':''} du premier coup sur ${qs.length}.`;
     renderStars($('endStars'));
     stopTimer();
     $('endTime').textContent = '⏱️ ' + fmt(elapsed);
-    let rec = null;
-    try{ rec = +localStorage.getItem(recKey()) || null; }catch(e){}
-    if (!rec || elapsed < rec){ try{ localStorage.setItem(recKey(), Math.round(elapsed)); }catch(e){} }
-    $('endRecord').textContent = !rec ? '🎯 Premier temps enregistré !'
-      : elapsed < rec ? `🔥 Nouveau record ! (avant : ${fmt(rec)})`
-      : `Record à battre : ${fmt(rec)}`;
+    const key = cfgKey();
+    if (player){
+      const mine = records[player] || (records[player] = {});
+      const rec = mine[key] || null;
+      if (!rec || elapsed < rec){ mine[key] = Math.round(elapsed); store.set('calc-records', records); }
+      $('endRecord').textContent = !rec ? '🎯 Premier temps enregistré !'
+        : elapsed < rec ? `🔥 Nouveau record ! (avant : ${fmt(rec)})`
+        : `Record à battre : ${fmt(rec)}`;
+    } else {
+      $('endRecord').textContent = '🎈 Partie libre : rien n\'est enregistré';
+    }
+    // Classement des joueurs sur ces mêmes réglages
+    const rows = players.filter(p => records[p] && records[p][key])
+      .map(p => [p, records[p][key]]).sort((a,b) => a[1] - b[1]);
+    const medals = ['🥇','🥈','🥉'];
+    $('board').style.display = rows.length ? '' : 'none';
+    $('board').innerHTML = '<h3>Records sur ce jeu</h3>' + rows.map(([p,t],i) =>
+      `<div class="${p === player ? 'me' : ''}"><span>${medals[i] || '·'} ${esc(p)}</span><span>${fmt(t)}</span></div>`).join('');
     winSound(); confetti();
     say($('endTitle').textContent);
   }
@@ -435,7 +530,7 @@
   $('start').onclick = startGame;
   $('again').onclick = startGame;
   $('back').onclick = () => { try{speechSynthesis.cancel()}catch(e){}; stopTimer(); show('setup'); };
-  $('menu2').onclick = () => show('setup');
+  $('menu2').onclick = () => { renderPlayers(); show('setup'); };
 })();
 </script>
 <script>
