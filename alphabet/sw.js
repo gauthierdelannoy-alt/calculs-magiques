@@ -1,4 +1,4 @@
-const CACHE = 'lettres-v1';
+const CACHE = 'lettres-v2';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'fonts/cursive.woff2', 'fonts/fredoka-400.woff2', 'fonts/fredoka-600.woff2', 'fonts/fredoka-700.woff2'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

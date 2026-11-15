@@ -336,10 +336,28 @@
   });
 
   // ---- Sons (WebAudio, déclenché par un clic)
+  // iPhone : jouer le son même si le bouton « silencieux » est activé (Safari 17+)
+  try{ if (navigator.audioSession) navigator.audioSession.type = 'playback'; }catch(e){}
   let ctx;
+  function audio(){
+    ctx = ctx || new (window.AudioContext||window.webkitAudioContext)();
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
+    return ctx;
+  }
+  // iPhone : le son et la voix doivent être « débloqués » par un vrai toucher de l'écran
+  let unlocked = false;
+  function unlock(){
+    if (unlocked) return; unlocked = true;
+    try{
+      const c = audio(), b = c.createBuffer(1, 1, 22050), s = c.createBufferSource();
+      s.buffer = b; s.connect(c.destination); s.start(0);
+    }catch(e){}
+    try{ if ('speechSynthesis' in window){ const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } }catch(e){}
+  }
+  ['touchend','pointerup','click'].forEach(ev => document.addEventListener(ev, unlock, { capture:true }));
   function beep(f, d, type='sine', when=0){
     try{
-      ctx = ctx || new (window.AudioContext||window.webkitAudioContext)();
+      audio();
       const o = ctx.createOscillator(), g = ctx.createGain();
       o.type = type; o.frequency.value = f;
       const t = ctx.currentTime + when;
@@ -356,10 +374,13 @@
   function say(text){
     if (!canSpeak) return;
     try{
-      speechSynthesis.cancel();
+      // Sur iPhone, « cancel » juste avant « speak » peut avaler la phrase : on ne coupe que si ça parle
+      if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+      speechSynthesis.resume();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = 'fr-FR'; u.rate = .85;
-      const v = speechSynthesis.getVoices().find(v => v.lang && v.lang.startsWith('fr'));
+      const vs = speechSynthesis.getVoices();
+      const v = vs.find(v => v.lang === 'fr-FR' && v.localService) || vs.find(v => v.lang === 'fr-FR') || vs.find(v => v.lang && v.lang.startsWith('fr'));
       if (v) u.voice = v;
       speechSynthesis.speak(u);
     }catch(e){}
@@ -511,8 +532,8 @@
     idx = 0; tries = 0; firstTry = 0; locked = false; helpOn = false;
     $('msg').textContent = '';
     $('who').textContent = player ? `😀 ${player}` : '🎈 Partie libre';
-    show('game'); render(); beep(660,.1); startTimer();
-    setTimeout(sayQuestion, 250);
+    show('game'); render(); unlock(); beep(660,.1); startTimer();
+    sayQuestion();
   }
   function finish(){
     show('end');
