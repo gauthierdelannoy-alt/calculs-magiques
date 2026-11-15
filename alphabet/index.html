@@ -345,9 +345,9 @@
     return ctx;
   }
   // iPhone : le son et la voix doivent être « débloqués » par un vrai toucher de l'écran
-  let unlocked = false;
+  let unlocked = false, unlockAt = 0;
   function unlock(){
-    if (unlocked) return; unlocked = true;
+    if (unlocked) return; unlocked = true; unlockAt = Date.now();
     try{
       const c = audio(), b = c.createBuffer(1, 1, 22050), s = c.createBufferSource();
       s.buffer = b; s.connect(c.destination); s.start(0);
@@ -375,7 +375,7 @@
     if (!canSpeak) return;
     try{
       // Sur iPhone, « cancel » juste avant « speak » peut avaler la phrase : on ne coupe que si ça parle
-      if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+      if ((speechSynthesis.speaking || speechSynthesis.pending) && Date.now() - unlockAt > 1500) speechSynthesis.cancel();
       speechSynthesis.resume();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = 'fr-FR'; u.rate = .85;
