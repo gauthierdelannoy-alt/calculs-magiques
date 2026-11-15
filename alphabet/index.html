@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lettres">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#fff8ec">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Les lettres magiques</title>
+<style>
+  @font-face{font-family:'Fredoka';src:url(fonts/fredoka-400.woff2) format('woff2');font-weight:400;font-display:swap}
+  @font-face{font-family:'Fredoka';src:url(fonts/fredoka-600.woff2) format('woff2');font-weight:600;font-display:swap}
+  @font-face{font-family:'Fredoka';src:url(fonts/fredoka-700.woff2) format('woff2');font-weight:700;font-display:swap}
+  @font-face{font-family:'Attachee';src:url(fonts/cursive.woff2) format('woff2');font-weight:400;font-display:block}
+  :root{
+    --bg:#fff8ec; --ink:#2b2a4c; --muted:#7a7896;
+    --a:#ff6b6b; --b:#4d96ff; --c:#6bcB77; --q:#ffd93d; --p:#b06bff;
+    --card:#ffffff; --shadow:0 6px 0 rgba(43,42,76,.12);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:'Fredoka','Arial Rounded MT Bold','Comic Sans MS',system-ui,sans-serif;color:var(--ink);
+    background:var(--bg);
+    background-image:radial-gradient(circle at 10% 10%,#ffe9b8 0 60px,transparent 61px),
+      radial-gradient(circle at 92% 20%,#e8dcff 0 80px,transparent 81px),
+      radial-gradient(circle at 85% 95%,#ffd6d6 0 90px,transparent 91px);
+    display:flex;justify-content:center;
+  }
+  .app{width:100%;max-width:560px;padding:calc(16px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:14px;min-height:100%}
+  h1{margin:4px 0 0;text-align:center;font-size:30px;font-weight:700}
+  h1 span{color:var(--p)} h1 span+span{color:var(--b)}
+  .sub{text-align:center;color:var(--muted);margin:0;font-size:17px}
+
+  .screen{display:none;flex-direction:column;gap:14px;flex:1}
+  .screen.on{display:flex}
+
+  .panel{background:var(--card);border-radius:22px;padding:16px;box-shadow:var(--shadow)}
+  .panel h2{margin:0 0 10px;font-size:19px;font-weight:600}
+  .choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .choices.three{grid-template-columns:1fr 1fr 1fr}
+  .chip{
+    font:inherit;font-size:17px;font-weight:600;border:3px solid #ece8f5;background:#faf9ff;
+    border-radius:16px;padding:12px 8px;cursor:pointer;color:var(--ink);line-height:1.15
+  }
+  .chip small{display:block;font-weight:400;color:var(--muted);font-size:14px;margin-top:2px}
+  .chip.sel{border-color:var(--b);background:#eaf3ff}
+  .chip .ex{font-size:24px;display:block;line-height:1.3}
+  .chip .ex .cur{font-size:22px}
+
+  .big{
+    font:inherit;font-size:26px;font-weight:700;border:none;border-radius:22px;padding:18px;
+    background:var(--c);color:#fff;cursor:pointer;box-shadow:0 6px 0 #4a9c55
+  }
+  .big:active{transform:translateY(4px);box-shadow:0 2px 0 #4a9c55}
+  .players{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+  .players .chip{display:flex;align-items:center;gap:8px;padding:10px 14px}
+  .players .chip.guest{border-style:dashed;flex-direction:column;gap:0;align-items:flex-start}
+  .players .chip.guest.sel{border-color:var(--q);background:#fff6d1;border-style:solid}
+  .players .x{font-size:14px;color:var(--muted);background:#eee;border-radius:10px;padding:2px 7px;font-weight:600}
+  .players .x.confirm{background:var(--a);color:#fff}
+  .addp{display:flex;gap:8px}
+  .addp input{flex:1;min-width:0;font:inherit;font-size:18px;border:3px solid #ece8f5;border-radius:16px;padding:10px 12px;color:var(--ink);background:#faf9ff}
+  .addp input:focus{outline:none;border-color:var(--b)}
+  .addp .add{flex:none}
+  .who{text-align:center;font-weight:600;color:var(--muted);font-size:17px;margin-top:-6px}
+  .board{background:#fff;border-radius:18px;box-shadow:var(--shadow);padding:10px 16px;margin:8px 0;min-width:240px;text-align:left}
+  .board h3{margin:0 0 6px;font-size:16px;color:var(--muted);font-weight:600;text-align:center}
+  .board div{display:flex;justify-content:space-between;gap:16px;font-size:18px;padding:3px 0}
+  .board div.me{color:var(--b);font-weight:700}
+
+  /* Les 3 écritures */
+  .up,.low,.tile.up,.tile.low{font-family:'Fredoka',system-ui,sans-serif;font-weight:600}
+  .cur,.tile.cur,.chip .cur{font-family:'Attachee','Fredoka',cursive;font-weight:400}
+
+  /* Jeu */
+  .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .icon-btn{font:inherit;font-size:16px;font-weight:600;border:none;background:#fff;border-radius:14px;padding:9px 12px;box-shadow:var(--shadow);cursor:pointer;color:var(--ink)}
+  .icon-btn.on{background:var(--q)}
+  .timer{font-size:22px;font-weight:700;background:#2b2a4c;color:#fff;border-radius:14px;padding:6px 12px;font-variant-numeric:tabular-nums}
+  .endtime{font-size:40px;font-weight:700;margin:10px 0 2px;background:#2b2a4c;color:#fff;border-radius:18px;padding:6px 18px;font-variant-numeric:tabular-nums}
+  #endRecord{font-size:19px;font-weight:600;color:#e08a00;min-height:24px}
+  .stars{display:flex;gap:4px;justify-content:center;flex-wrap:wrap}
+  .stars i{font-style:normal;font-size:22px;opacity:.2;transition:.3s}
+  .stars i.got{opacity:1;transform:scale(1.15)}
+  .stars i.now{opacity:.55}
+
+  .question{
+    background:#fff;border-radius:26px;box-shadow:var(--shadow);padding:16px 12px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:170px
+  }
+  .question .ask{font-size:20px;font-weight:600;color:var(--muted);text-align:center}
+  .question .model{font-size:96px;line-height:1.1;color:var(--p)}
+  .question .model.cur{font-size:58px}
+  .ear{
+    font:inherit;font-size:64px;border:none;background:#f1e8ff;border-radius:50%;width:116px;height:116px;
+    cursor:pointer;box-shadow:0 6px 0 #d9c6f7;display:flex;align-items:center;justify-content:center
+  }
+  .ear:active{transform:translateY(4px);box-shadow:0 2px 0 #d9c6f7}
+  .ear.talk{animation:pulse .6s ease-in-out 2}
+  @keyframes pulse{50%{transform:scale(1.08)}}
+
+  .helper{background:#fff;border-radius:22px;box-shadow:var(--shadow);padding:12px 14px;display:none;align-items:center;justify-content:center;gap:12px}
+  .helper.on{display:flex}
+  .helper .emo{font-size:46px;line-height:1}
+  .helper .word{font-size:30px;line-height:1.3}
+  .helper .word.cur{font-size:30px}
+  .helper .word b{color:var(--a);font-weight:inherit}
+  .helper .word span{color:var(--muted)}
+
+  .msg{text-align:center;font-size:22px;font-weight:600;min-height:30px}
+
+  .tiles{display:grid;gap:12px;grid-template-columns:repeat(3,1fr)}
+  .tiles.n4{grid-template-columns:repeat(2,1fr)}
+  .tile{
+    font:inherit;border:none;border-radius:22px;background:#fff;color:var(--ink);box-shadow:var(--shadow);
+    cursor:pointer;height:116px;display:flex;align-items:center;justify-content:center;
+    font-size:72px;line-height:1;padding:0;transition:opacity .25s
+  }
+  .tiles.n4 .tile{height:130px;font-size:80px}
+  .tile.cur{font-size:44px}
+  /* Écriture attachée : boîte qui contient les grandes boucles (hampes et jambages), lettre centrée */
+  .cur .g{display:block;height:2.36em;line-height:1.86em}
+  .tiles.n4 .tile.cur{font-size:50px}
+  .tile:nth-child(6n+1){color:#e85555} .tile:nth-child(6n+2){color:#3a7fe6} .tile:nth-child(6n+3){color:#3fa451}
+  .tile:nth-child(6n+4){color:#9b4fe8} .tile:nth-child(6n+5){color:#e08a00} .tile:nth-child(6n+6){color:#d6457f}
+  .tile:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(43,42,76,.12)}
+  .tile.ok{background:#dff6e3;box-shadow:0 6px 0 var(--c);color:#2f8a3d;transform:scale(1.06)}
+  .tile.ko{animation:shake .45s;background:#ffe3e3}
+  .tile.off{opacity:.18;pointer-events:none}
+  @keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+
+  /* Fin */
+  .end{text-align:center;align-items:center;justify-content:center}
+  .end .trophy{font-size:90px;line-height:1}
+  .end h2{font-size:32px;margin:6px 0}
+  .end p{font-size:20px;margin:0;color:var(--muted)}
+  .confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+  .confetti b{position:absolute;top:-20px;width:12px;height:16px;border-radius:3px;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Écran réglages -->
+  <section class="screen on" id="setup">
+    <h1><span>Les lettres</span> <span>magiques</span></h1>
+    <p class="sub">Retrouve les lettres de l'alphabet ! ✨</p>
+
+    <div class="panel">
+      <h2>Qui joue ?</h2>
+      <div class="players" id="players"></div>
+      <form class="addp" id="addForm" autocomplete="off">
+        <input id="newName" maxlength="14" placeholder="Nouveau prénom…" enterkeyhint="done">
+        <button class="chip add" type="submit">＋ Ajouter</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Quelle écriture ?</h2>
+      <div class="choices three" data-group="level">
+        <button class="chip sel" data-v="up"><span class="ex up">A B C</span><small>majuscules</small></button>
+        <button class="chip" data-v="mix"><span class="ex up">A b C</span><small>majuscules et minuscules</small></button>
+        <button class="chip" data-v="cur"><span class="ex"><span class="cur">a b c</span></span><small>attachées ✍️</small></button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Quel jeu ?</h2>
+      <div class="choices three" data-group="mode">
+        <button class="chip" data-v="ear">🔊<small>j'écoute la lettre</small></button>
+        <button class="chip" data-v="see">👀<small>je retrouve sa jumelle</small></button>
+        <button class="chip sel" data-v="mix">Les deux<small>mélangés</small></button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Combien de lettres au choix ?</h2>
+      <div class="choices three" data-group="n">
+        <button class="chip" data-v="3">3<small>pour débuter</small></button>
+        <button class="chip sel" data-v="4">4<small>niveau CP</small></button>
+        <button class="chip" data-v="6">6<small>champion</small></button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Combien de questions ?</h2>
+      <div class="choices three" data-group="count">
+        <button class="chip" data-v="5">5</button>
+        <button class="chip sel" data-v="10">10</button>
+        <button class="chip" data-v="15">15</button>
+      </div>
+    </div>
+
+    <button class="big" id="start">C'est parti ! 🚀</button>
+  </section>
+
+  <!-- Écran jeu -->
+  <section class="screen" id="game">
+    <div class="top">
+      <button class="icon-btn" id="back">← Menu</button>
+      <span class="timer" id="timer">⏱️ 0:00</span>
+      <button class="icon-btn" id="speak">🔊</button>
+      <button class="icon-btn" id="help">💡 Aide</button>
+    </div>
+    <div class="who" id="who"></div>
+    <div class="stars" id="stars"></div>
+
+    <div class="question" id="question"></div>
+    <div class="helper" id="helper"></div>
+    <div class="msg" id="msg"></div>
+
+    <div class="tiles" id="tiles"></div>
+  </section>
+
+  <!-- Écran fin -->
+  <section class="screen end" id="end">
+    <div class="trophy" id="trophy">🏆</div>
+    <h2 id="endTitle">Bravo !</h2>
+    <p id="endText"></p>
+    <div class="endtime" id="endTime"></div>
+    <p id="endRecord"></p>
+    <div class="board" id="board" style="display:none"></div>
+    <div class="stars" id="endStars" style="margin:12px 0"></div>
+    <button class="big" id="again">Rejouer 🔁</button>
+    <button class="icon-btn" id="menu2" style="margin-top:6px">Changer les réglages</button>
+  </section>
+</div>
+<div class="confetti" id="confetti"></div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const cfg = { level:'up', mode:'mix', n:4, count:10 };
+
+  // ---- L'alphabet : nom de la lettre (pour la voix) + un mot pour l'aide
+  const LETTERS = {
+    A:['a','ananas','🍍'],   B:['bé','ballon','🎈'],   C:['cé','cochon','🐷'],  D:['dé','dauphin','🐬'],
+    E:['eu','escargot','🐌'],F:['èfe','fraise','🍓'],  G:['jé','gâteau','🎂'],  H:['ache','hibou','🦉'],
+    I:['i','iguane','🦎'],   J:['ji','jongleur','🤹'], K:['ka','koala','🐨'],   L:['èle','lion','🦁'],
+    M:['ème','maison','🏠'], N:['ène','nuage','☁️'],   O:['o','orange','🍊'],   P:['pé','pomme','🍎'],
+    Q:['ku','quille','🎳'],  R:['ère','robot','🤖'],   S:['èsse','soleil','☀️'],T:['té','tortue','🐢'],
+    U:['u','usine','🏭'],    V:['vé','vélo','🚲'],     W:['double vé','wagon','🚃'], X:['ixe','xylophone','🎶'],
+    Y:['i grec','yoyo','🪀'],Z:['zède','zèbre','🦓']
+  };
+  const ALPHA = Object.keys(LETTERS);
+  // Lettres qui se ressemblent (pour les pièges)
+  const LOOK = {
+    up:  ['EF','OQCG','PRB','MNW','ILTJ','UV','KXY','DO','HN','SZ'],
+    low: ['bdpq','mnu','hn','ilj','ft','aoe','ce','vwy','gq','rn'],
+    cur: ['bdpq','mnu','hkl','ilt','ft','aoe','ce','vwy','gjy','rs']
+  };
+
+  // ---- Chrono
+  let t0 = 0, tick = null, elapsed = 0;
+  const fmt = ms => { const s = Math.floor(ms/1000); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; };
+  function startTimer(){ stopTimer(); t0 = performance.now(); elapsed = 0; $('timer').textContent = '⏱️ 0:00';
+    tick = setInterval(() => { elapsed = performance.now() - t0; $('timer').textContent = '⏱️ ' + fmt(elapsed); }, 250); }
+  function stopTimer(){ if (tick) clearInterval(tick); tick = null; if (t0) elapsed = performance.now() - t0; }
+  const cfgKey = () => `${cfg.level}-${cfg.mode}-${cfg.n}-${cfg.count}`;
+
+  // ---- Joueurs (enregistrés dans cet appareil)
+  const store = {
+    get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+    set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  };
+  // Les prénoms sont partagés avec les calculs magiques (même appareil) s'il y en a déjà
+  let players = store.get('abc-players', null) || store.get('calc-players', []);
+  let records = store.get('abc-records', {});           // { prénom: { réglage: ms } }
+  let player = store.get('abc-last-player', store.get('calc-last-player', null));
+  if (player && !players.includes(player)) player = null;
+  let pendingDelete = null;
+
+  function renderPlayers(){
+    const box = $('players');
+    box.innerHTML = '';
+    players.forEach(p => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (player === p ? ' sel' : '');
+      b.innerHTML = `<span>😀 ${esc(p)}</span><span class="x${pendingDelete === p ? ' confirm' : ''}">${pendingDelete === p ? 'Supprimer ?' : '✕'}</span>`;
+      b.onclick = e => {
+        if (e.target.closest('.x')){
+          if (pendingDelete === p){
+            players = players.filter(x => x !== p); delete records[p];
+            store.set('abc-players', players); store.set('abc-records', records);
+            if (player === p) player = null;
+            pendingDelete = null;
+          } else pendingDelete = p;
+        } else { player = p; pendingDelete = null; beep(520,.06); }
+        store.set('abc-last-player', player);
+        renderPlayers();
+      };
+      box.appendChild(b);
+    });
+    const g = document.createElement('button');
+    g.type = 'button';
+    g.className = 'chip guest' + (player === null ? ' sel' : '');
+    g.innerHTML = '🎈 Juste pour jouer<small>rien n\'est enregistré</small>';
+    g.onclick = () => { player = null; pendingDelete = null; store.set('abc-last-player', null); beep(520,.06); renderPlayers(); };
+    box.appendChild(g);
+  }
+  const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  $('addForm').addEventListener('submit', e => {
+    e.preventDefault();
+    let n = $('newName').value.trim().replace(/\s+/g,' ');
+    if (!n) return;
+    n = n.charAt(0).toUpperCase() + n.slice(1);
+    const existing = players.find(p => p.toLowerCase() === n.toLowerCase());
+    if (!existing) { players.push(n); }
+    store.set('abc-players', players);
+    player = existing || n;
+    store.set('abc-last-player', player);
+    $('newName').value = ''; $('newName').blur();
+    beep(660,.08); renderPlayers();
+  });
+  renderPlayers();
+  let qs = [], idx = 0, tries = 0, firstTry = 0, locked = false, helpOn = false;
+
+  // ---- Réglages
+  document.querySelectorAll('[data-group]').forEach(g => {
+    g.addEventListener('click', e => {
+      const b = e.target.closest('.chip'); if (!b) return;
+      g.querySelectorAll('.chip').forEach(c => c.classList.remove('sel'));
+      b.classList.add('sel');
+      const k = g.dataset.group, v = b.dataset.v;
+      cfg[k] = (k === 'n' || k === 'count') ? +v : v;
+      beep(520, .06);
+    });
+  });
+
+  // ---- Sons (WebAudio, déclenché par un clic)
+  let ctx;
+  function beep(f, d, type='sine', when=0){
+    try{
+      ctx = ctx || new (window.AudioContext||window.webkitAudioContext)();
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type; o.frequency.value = f;
+      const t = ctx.currentTime + when;
+      g.gain.setValueAtTime(.18, t); g.gain.exponentialRampToValueAtTime(.001, t + d);
+      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + d);
+    }catch(e){}
+  }
+  const winSound = () => [523,659,784,1047].forEach((f,i)=>beep(f,.18,'triangle',i*.09));
+  const failSound = () => { beep(220,.18,'square'); beep(180,.25,'square',.15); };
+
+  // ---- Voix
+  const canSpeak = 'speechSynthesis' in window;
+  if (!canSpeak) $('speak').style.display = 'none';
+  function say(text){
+    if (!canSpeak) return;
+    try{
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'fr-FR'; u.rate = .85;
+      const v = speechSynthesis.getVoices().find(v => v.lang && v.lang.startsWith('fr'));
+      if (v) u.voice = v;
+      speechSynthesis.speak(u);
+    }catch(e){}
+  }
+  const nameOf = L => LETTERS[L][0];
+  function sayQuestion(){
+    const q = qs[idx];
+    if (q.kind === 'ear'){
+      say(`Trouve la lettre… ${nameOf(q.letter)} !`);
+      const ear = document.querySelector('.ear');
+      if (ear){ ear.classList.remove('talk'); void ear.offsetWidth; ear.classList.add('talk'); }
+    } else {
+      say(q.same ? 'Trouve la même lettre !' : 'Trouve sa jumelle !');
+    }
+  }
+
+  // ---- Génération des questions
+  const rnd = (a,b) => a + Math.floor(Math.random()*(b-a+1));
+  const shuffle = arr => { for (let i = arr.length-1; i > 0; i--){ const j = rnd(0,i); [arr[i],arr[j]] = [arr[j],arr[i]]; } return arr; };
+  const formsOf = () => cfg.level === 'up' ? ['up'] : cfg.level === 'mix' ? ['up','low'] : ['cur'];
+  const pickForm = () => { const f = formsOf(); return f[rnd(0, f.length-1)]; };
+  const draw = (L, form) => form === 'up' ? L : L.toLowerCase();
+
+  function makeQuestion(recent){
+    let letter, guard = 0;
+    do { letter = ALPHA[rnd(0, 25)]; } while (recent.includes(letter) && ++guard < 50);
+    const kind = cfg.mode === 'mix' ? (Math.random() < .5 ? 'ear' : 'see') : cfg.mode;
+
+    // Les pièges : d'abord une lettre qui ressemble, puis au hasard
+    const look = cfg.level === 'up' ? 'up' : cfg.level === 'cur' ? 'cur' : (Math.random() < .5 ? 'up' : 'low');
+    const fam = LOOK[look].find(s => s.toUpperCase().includes(letter));
+    const pool = new Set();
+    if (fam) shuffle([...fam.toUpperCase()].filter(c => c !== letter)).slice(0, cfg.n >= 4 ? 2 : 1).forEach(c => pool.add(c));
+    const rest = shuffle(ALPHA.filter(c => c !== letter && !pool.has(c)));
+    while (pool.size < cfg.n - 1) pool.add(rest.pop());
+    const letters = shuffle([letter, ...pool]);
+
+    // Écriture de chaque case
+    let tiles, model = null, same = false;
+    if (kind === 'see'){
+      if (cfg.level === 'up'){ model = 'up'; same = true; }
+      else if (cfg.level === 'mix'){ model = Math.random() < .5 ? 'up' : 'low'; }
+      else { model = Math.random() < .5 ? 'up' : 'low'; }
+      tiles = letters.map(c => {
+        if (cfg.level === 'up') return 'up';
+        if (cfg.level === 'cur') return 'cur';
+        // Mélange : la bonne réponse est dans l'autre écriture que le modèle
+        if (c === letter) return model === 'up' ? 'low' : 'up';
+        return pickForm();
+      });
+    } else {
+      tiles = letters.map(() => pickForm());
+      // En mélange, on s'assure d'avoir des majuscules ET des minuscules à l'écran
+      if (cfg.level === 'mix' && new Set(tiles).size === 1) tiles[rnd(0, tiles.length-1)] = tiles[0] === 'up' ? 'low' : 'up';
+    }
+    // « I » majuscule et « l » minuscule se ressemblent trop : jamais les deux à l'écran
+    const iI = letters.indexOf('I'), iL = letters.indexOf('L');
+    if (iI >= 0 && iL >= 0 && tiles[iI] === 'up' && tiles[iL] === 'low'){
+      if (letter === 'L') tiles[iI] = 'low'; else tiles[iL] = 'up';
+    }
+    return { letter, kind, letters, tiles, model, same };
+  }
+
+  // ---- Affichage
+  function render(){
+    const q = qs[idx];
+    if (q.kind === 'ear'){
+      $('question').innerHTML = `<button class="ear" id="ear" aria-label="Écouter">🔊</button><div class="ask">Écoute et touche la bonne lettre</div>`;
+      $('ear').onclick = sayQuestion;
+    } else {
+      $('question').innerHTML = `<div class="ask">${q.same ? 'Trouve la même lettre' : 'Trouve sa jumelle'}</div>
+        <div class="model ${q.model}"><span class="g">${draw(q.letter, q.model)}</span></div>`;
+    }
+    const box = $('tiles');
+    box.className = 'tiles' + (q.letters.length === 4 ? ' n4' : '');
+    box.innerHTML = '';
+    q.letters.forEach((c, i) => {
+      const t = document.createElement('button');
+      t.className = 'tile ' + q.tiles[i];
+      t.innerHTML = `<span class="g">${draw(c, q.tiles[i])}</span>`;
+      t.onclick = () => pick(c, t);
+      box.appendChild(t);
+    });
+    renderStars($('stars'));
+    renderHelper();
+  }
+  function renderStars(el){
+    el.innerHTML = qs.map((q,i) =>
+      `<i class="${q.done ? 'got' : (i === idx && el.id==='stars' ? 'now' : '')}">${q.done ? (q.first ? '⭐' : '🌟') : '⭐'}</i>`).join('');
+  }
+  function renderHelper(){
+    const h = $('helper'), q = qs[idx];
+    h.classList.toggle('on', helpOn);
+    $('help').classList.toggle('on', helpOn);
+    if (!helpOn) return;
+    const [, word, emo] = LETTERS[q.letter];
+    const form = cfg.level === 'up' ? 'up' : cfg.level === 'cur' ? 'cur' : 'low';
+    const w = form === 'up' ? word.toUpperCase() : word;
+    h.innerHTML = `<span class="emo">${emo}</span><span class="word ${form}"><b>${w.charAt(0)}</b><span>${w.slice(1)}</span></span>`;
+  }
+  function showHelp(){
+    helpOn = true; renderHelper();
+    const q = qs[idx];
+    say(`${nameOf(q.letter)}, comme ${LETTERS[q.letter][1]}`);
+    // On enlève la moitié des mauvaises réponses
+    const wrong = shuffle([...document.querySelectorAll('.tile:not(.off)')].filter(t => !t.classList.contains('ok') && t.dataset.good !== '1' && t.textContent.toUpperCase() !== q.letter));
+    wrong.slice(0, Math.floor(wrong.length / 2)).forEach(t => t.classList.add('off'));
+  }
+  $('help').onclick = () => { if (locked) return; beep(600,.06); if (helpOn){ helpOn = false; renderHelper(); } else showHelp(); };
+  $('speak').onclick = sayQuestion;
+
+  // ---- Vérification
+  const bravo = ['Bravo ! 🎉','Super ! 🌈','Génial ! 🚀','Champion ! 🏅','Trop fort ! 💪','Parfait ! ⭐'];
+  function pick(c, tile){
+    if (locked) return;
+    const q = qs[idx];
+    if (c === q.letter){
+      locked = true;
+      q.done = true; q.first = tries === 0;
+      if (q.first) firstTry++;
+      tile.classList.add('ok');
+      document.querySelectorAll('.tile').forEach(t => { if (t !== tile) t.classList.add('off'); });
+      const m = bravo[rnd(0,bravo.length-1)];
+      $('msg').textContent = m; $('msg').style.color = '#2f8a3d';
+      renderStars($('stars')); winSound();
+      say(`${m.replace(/[^\p{L}\s!]/gu,'')} C'est la lettre ${nameOf(q.letter)}.`);
+      setTimeout(next, 1800);
+    } else {
+      tries++;
+      failSound();
+      tile.classList.add('ko');
+      setTimeout(() => { tile.classList.remove('ko'); tile.classList.add('off'); }, 450);
+      $('msg').style.color = '#d64545';
+      if (tries >= 2 && !helpOn){ showHelp(); $('msg').textContent = 'Regarde l\'aide 💡'; }
+      else { $('msg').textContent = tries >= 2 ? 'Regarde bien l\'aide 💡' : 'Presque ! Essaie encore 😊'; say(`Non, ça c'est ${nameOf(c)}.`); }
+    }
+  }
+  function next(){
+    idx++; tries = 0; locked = false; helpOn = false;
+    $('msg').textContent = '';
+    if (idx >= qs.length) return finish();
+    render(); setTimeout(sayQuestion, 200);
+  }
+
+  // ---- Démarrage / fin
+  function startGame(){
+    qs = [];
+    for (let i = 0; i < cfg.count; i++) qs.push(makeQuestion(qs.slice(-6).map(q => q.letter)));
+    idx = 0; tries = 0; firstTry = 0; locked = false; helpOn = false;
+    $('msg').textContent = '';
+    $('who').textContent = player ? `😀 ${player}` : '🎈 Partie libre';
+    show('game'); render(); beep(660,.1); startTimer();
+    setTimeout(sayQuestion, 250);
+  }
+  function finish(){
+    show('end');
+    const r = firstTry / qs.length;
+    $('trophy').textContent = r === 1 ? '🏆' : r >= .7 ? '🥇' : r >= .4 ? '🥈' : '🎈';
+    const title = r === 1 ? 'Sans faute' : r >= .7 ? (player ? 'Bravo' : 'Bravo champion') : 'Bien joué';
+    $('endTitle').textContent = player ? `${title} ${player} !` : `${title} !`;
+    $('endText').textContent = `${firstTry} bonne${firstTry>1?'s':''} réponse${firstTry>1?'s':''} du premier coup sur ${qs.length}.`;
+    renderStars($('endStars'));
+    stopTimer();
+    $('endTime').textContent = '⏱️ ' + fmt(elapsed);
+    const key = cfgKey();
+    if (player){
+      const mine = records[player] || (records[player] = {});
+      const rec = mine[key] || null;
+      if (!rec || elapsed < rec){ mine[key] = Math.round(elapsed); store.set('abc-records', records); }
+      $('endRecord').textContent = !rec ? '🎯 Premier temps enregistré !'
+        : elapsed < rec ? `🔥 Nouveau record ! (avant : ${fmt(rec)})`
+        : `Record à battre : ${fmt(rec)}`;
+    } else {
+      $('endRecord').textContent = '🎈 Partie libre : rien n\'est enregistré';
+    }
+    const rows = players.filter(p => records[p] && records[p][key])
+      .map(p => [p, records[p][key]]).sort((a,b) => a[1] - b[1]);
+    const medals = ['🥇','🥈','🥉'];
+    $('board').style.display = rows.length ? '' : 'none';
+    $('board').innerHTML = '<h3>Records sur ce jeu</h3>' + rows.map(([p,t],i) =>
+      `<div class="${p === player ? 'me' : ''}"><span>${medals[i] || '·'} ${esc(p)}</span><span>${fmt(t)}</span></div>`).join('');
+    winSound(); confetti();
+    say($('endTitle').textContent);
+  }
+  function show(id){ document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id)); window.scrollTo(0,0); }
+  function confetti(){
+    const box = $('confetti'), colors = ['#ff6b6b','#4d96ff','#6bcb77','#ffd93d','#c77dff'];
+    for (let i=0;i<70;i++){
+      const b = document.createElement('b');
+      b.style.left = Math.random()*100 + 'vw';
+      b.style.background = colors[i % colors.length];
+      b.style.animationDuration = (1.8 + Math.random()*1.8) + 's';
+      b.style.animationDelay = (Math.random()*.6) + 's';
+      box.appendChild(b);
+      setTimeout(() => b.remove(), 4500);
+    }
+  }
+
+  $('start').onclick = startGame;
+  $('again').onclick = startGame;
+  $('back').onclick = () => { try{speechSynthesis.cancel()}catch(e){}; stopTimer(); show('setup'); };
+  $('menu2').onclick = () => { renderPlayers(); show('setup'); };
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
