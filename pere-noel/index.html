@@ -211,7 +211,7 @@ function loadVoices(){
 if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
 $("voiceSel").onchange=()=>{S.voice=$("voiceSel").value;store.set("voice",S.voice);voice=voices.find(v=>v.name===S.voice)||voice;};
 $("pitch").value=S.pitch; $("pitch").oninput=()=>{S.pitch=parseFloat($("pitch").value);store.set("pitch",S.pitch);};
-$("testVoice").onclick=()=>{ try{speechSynthesis.cancel()}catch(e){} say("Ho ho ho ! Bonsoir les enfants, c'est le Père Noël qui vous parle depuis le Pôle Nord !",true); };
+$("testVoice").onclick=()=>{ unlockSpeech(); say("Ho ho ho ! Bonsoir les enfants, c'est le Père Noël qui vous parle depuis le Pôle Nord !",true); };
 
 function setTalking(on){document.querySelectorAll(".santa").forEach(s=>s.classList.toggle("talking",on));}
 function setMode(m){const e=$("mode");
@@ -237,6 +237,7 @@ function say(text, test){
       const u=new SpeechSynthesisUtterance(parts[i++].trim());
       u.lang="fr-FR"; if(voice) u.voice=voice; u.pitch=S.pitch; u.rate=0.9;
       u.onend=next; u.onerror=next;
+      try{ speechSynthesis.resume(); }catch(e){}
       speechSynthesis.speak(u);
     };
     next();
@@ -388,7 +389,9 @@ function startRing(){const a=ac();if(!a)return;stopRing();const g=a.createGain()
   let t=a.currentTime;for(let i=0;i<20;i++){g.gain.setValueAtTime(.12,t);g.gain.setValueAtTime(0,t+1.2);t+=3;}ring={o1,o2,g};}
 function stopRing(){if(ring){try{ring.o1.stop();ring.o2.stop();ring.g.disconnect()}catch(e){}ring=null;}}
 function jingle(){const a=ac();if(!a)return;[1318,1568,1760,2093].forEach((f,i)=>{const o=a.createOscillator(),g=a.createGain();o.type="triangle";o.frequency.value=f;o.connect(g);g.connect(a.destination);const t=a.currentTime+i*.09;g.gain.setValueAtTime(.12,t);g.gain.exponentialRampToValueAtTime(.001,t+.35);o.start(t);o.stop(t+.4);});}
-function unlockSpeech(){ try{ const u=new SpeechSynthesisUtterance(" "); u.volume=0; speechSynthesis.speak(u); }catch(e){} }
+/* Sur iPhone, la voix doit être "réveillée" pendant un appui : on dit un mot presque muet. */
+let speechUnlocked=false;
+function unlockSpeech(){ try{ ac(); speechSynthesis.cancel(); speechSynthesis.resume(); const u=new SpeechSynthesisUtterance("Allô"); u.lang="fr-FR"; u.volume=0.05; u.rate=1.5; if(voice) u.voice=voice; speechSynthesis.speak(u); speechUnlocked=true; }catch(e){} }
 
 function show(id){document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("active",s.id===id));window.scrollTo(0,0);}
 function setActions(list){const a=$("callActions");a.innerHTML="";list.forEach(([cls,ico,fn])=>{const b=document.createElement("button");b.className="call-btn "+cls;b.textContent=ico;b.onclick=fn;a.appendChild(b);});}
@@ -401,7 +404,6 @@ function connect(scenario){
   call.start=Date.now(); clearInterval(call.timer);
   call.timer=setInterval(()=>{const s=Math.floor((Date.now()-call.start)/1000);$("callTimer").textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");},1000);
   // demande le micro tout de suite (pendant le geste) pour la reconnaissance vocale
-  if(srOk && navigator.mediaDevices && navigator.mediaDevices.getUserMedia){ navigator.mediaDevices.getUserMedia({audio:true}).then(s=>s.getTracks().forEach(t=>t.stop())).catch(()=>{srOk=false;}); }
   setTimeout(()=>{ scenario().then(()=>endCall()).catch(e=>{ if(!(e instanceof Stop)) { console.error(e); endCall(); } }); },500);
 }
 $("callBtn").onclick=()=>{
