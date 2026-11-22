@@ -151,6 +151,10 @@ textarea{min-height:84px;resize:vertical}
         <button data-v="f_frere">Se dispute avec son frère</button>
         <button data-v="f_ecoute">N'écoute pas papa et maman</button>
         <button data-v="f_coucher">Ne veut pas se coucher</button>
+        <button data-v="f_tape" data-needs="f_tape">Tape son frère</button>
+        <button data-v="f_legumes" data-needs="f_legumes">Ne mange pas ses légumes</button>
+        <button data-v="f_dents" data-needs="f_dents">Ne se brosse pas les dents</button>
+        <button data-v="f_grosmots" data-needs="f_grosmots">Dit des gros mots</button>
         <button data-v="f_general">Pas sage en général</button>
       </div>
     </div>
@@ -190,7 +194,7 @@ const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
 function esc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
 
 /* ================= LES PHRASES DU PÈRE NOËL ================= */
-const LINES=Object.assign({g_inconnu:"Ho ho ho ! Allô, ici le Père Noël, au Pôle Nord !"},{"g_charlie": "Ho ho ho ! Allô, ici le Père Noël ! Bonjour Charlie !", "g_marius": "Ho ho ho ! Allô, ici le Père Noël ! Bonjour Marius !", "plaisir": "Ça me fait tellement plaisir de t'entendre !", "q_sage": "Dis-moi, tu as été sage cette année ?", "bravo": "Ho ho ho, bravo ! Continue comme ça.", "efforts": "Il reste encore du temps pour faire des efforts. Je compte sur toi !", "q_cadeau": "Qu'est-ce que tu voudrais pour Noël ?", "r_cadeau": "Très bonne idée ! Je le note dans mon grand livre.", "q_question": "Tu as une question pour le Père Noël ?", "secret": "Ho ho ho ! Ça, c'est un secret du Pôle Nord !", "rennes": "Mes rennes vont très bien, ils s'entraînent pour la nuit de Noël !", "bye": "Je dois retourner aider mes lutins. Sois bien sage. Au revoir, ho ho ho !", "intro": "J'ai quelque chose d'important à te dire.", "lutins": "Mes lutins m'ont dit que tu...", "f_chambre": "ne ranges pas ta chambre.", "f_frere": "te disputes avec ton frère.", "f_ecoute": "n'écoutes pas papa et maman.", "f_coucher": "ne veux pas aller te coucher.", "f_general": "n'as pas été très sage.", "f_sage": "as été très, très sage !", "vrai": "C'est vrai ?", "promesse": "Tu me promets de faire des efforts ?", "merci": "Merci ! Je crois très fort en toi.", "fier": "Je suis très fier de toi !"});
+const LINES=Object.assign({g_inconnu:"Ho ho ho ! Allô, ici le Père Noël, au Pôle Nord !"},{"g_charlie": "Ho ho ho ! Allô, ici le Père Noël ! Bonjour Charlie !", "g_marius": "Ho ho ho ! Allô, ici le Père Noël ! Bonjour Marius !", "plaisir": "Ça me fait tellement plaisir de t'entendre !", "q_sage": "Dis-moi, tu as été sage cette année ?", "bravo": "Ho ho ho, bravo ! Continue comme ça.", "efforts": "Il reste encore du temps pour faire des efforts. Je compte sur toi !", "q_cadeau": "Qu'est-ce que tu voudrais pour Noël ?", "r_cadeau": "Très bonne idée ! Je le note dans mon grand livre.", "q_question": "Tu as une question pour le Père Noël ?", "secret": "Ho ho ho ! Ça, c'est un secret du Pôle Nord !", "rennes": "Mes rennes vont très bien, ils s'entraînent pour la nuit de Noël !", "bye": "Je dois retourner aider mes lutins. Sois bien sage. Au revoir, ho ho ho !", "intro": "J'ai quelque chose d'important à te dire.", "lutins": "Mes lutins m'ont dit que tu...", "f_chambre": "ne ranges pas ta chambre.", "f_frere": "te disputes avec ton frère.", "f_ecoute": "n'écoutes pas papa et maman.", "f_coucher": "ne veux pas aller te coucher.", "f_general": "n'as pas été très sage.", "f_sage": "as été très, très sage !", "vrai": "C'est vrai ?", "promesse": "Tu me promets de faire des efforts ?", "merci": "Merci ! Je crois très fort en toi.", "fier": "Je suis très fier de toi !"},{"q_question2": "Tu as une autre question ?", "a_cheminee": "Ah ça, c'est un secret magique ! Ma poudre d'étoiles m'aide à passer partout.", "a_lutins": "Mes lutins fabriquent les jouets jour et nuit, en chantant !", "a_merenoel": "La Mère Noël prépare des biscuits. Elle te fait un gros bisou !", "a_existe": "Ho ho ho ! Tu entends bien ma voix, non ? Tant que tu crois en la magie de Noël, je suis là.", "a_manger": "J'adore les biscuits et un verre de lait ! Et une carotte pour les rennes !", "a_age": "Je suis tellement vieux que j'ai arrêté de compter les bougies !", "a_traineau": "Mon traîneau vole grâce à la magie de Noël. Il fait le tour du monde en une nuit !", "a_quand": "Je passerai le soir du 24 décembre, quand tu dormiras.", "q_autre": "Il y a autre chose que tu voudrais ?", "r_autre": "C'est noté aussi !", "timide": "Tu es un peu timide ? Ce n'est pas grave !", "news": "Tu sais, ce matin, un lutin est tombé dans la neige. On ne voyait plus que son bonnet ! Ho ho ho !", "f_tape": "tapes ton frère.", "f_legumes": "ne manges pas tes légumes.", "f_dents": "ne te brosses pas les dents.", "f_grosmots": "dis des gros mots."});
 const CLIP_DIR="voix/";
 const clipUrl={};          // id -> URL (blob) une fois chargé
 let clipsReady=0;
@@ -199,11 +203,10 @@ function preloadClips(){
   let missing=0;
   Promise.all(ids.map(id=>fetch(CLIP_DIR+id+".mp3").then(r=>{ if(!r.ok) throw 0; return r.blob(); })
     .then(b=>{ clipUrl[id]=URL.createObjectURL(b); clipsReady++; }).catch(()=>{missing++;})))
-  .then(()=>{ const e=$("voiceState"); if(!e) return;
-    e.textContent = missing===0 ? `Voix du Père Noël prête (${clipsReady} phrases enregistrées).`
-      : clipsReady ? `${clipsReady} phrases enregistrées, ${missing} manquantes (remplacées par la voix du téléphone).`
-      : "Pas encore d'enregistrements : c'est la voix du téléphone qui parle en attendant."; });
+  .then(()=>{ const e=$("voiceState"); if(e) e.textContent = clipsReady ? `Voix du Père Noël prête : ${clipsReady} phrases enregistrées.` : "Pas encore d'enregistrements : c'est la voix du téléphone qui parle en attendant.";
+    document.querySelectorAll("[data-needs]").forEach(b=>b.style.display=clipUrl[b.dataset.needs]?"":"none"); });
 }
+const has=id=>!!clipUrl[id];
 
 /* ================= SON ================= */
 // Deux lecteurs audio : un pour la sonnerie, un pour le Père Noël.
@@ -303,14 +306,23 @@ class Stop extends Error{}
 async function P(id){ if(!call.active) throw new Stop(); await play(id); if(!call.active) throw new Stop(); }
 async function L(ms){ if(!call.active) throw new Stop(); const r=await listen(ms); if(!call.active) throw new Stop(); return r; }
 
+const FAQ=[[/renne|rudolph|tornade|comete/,"rennes"],[/chemin/,"a_cheminee"],[/lutin/,"a_lutins"],[/mere noel|ta femme|maman noel/,"a_merenoel"],
+  [/existe|vrai pere noel|t'es vrai|tu es vrai/,"a_existe"],[/traineau|vole|voler/,"a_traineau"],[/mange|manger|biscuit|lait|gateau/,"a_manger"],
+  [/age|vieux/,"a_age"],[/quand|dodo|combien de jours|passer|viens/,"a_quand"]];
+function faq(q){ const n=norm(q); for(const [re,id] of FAQ) if(re.test(n) && has(id)) return id; return "secret"; }
 async function scenarioKidCalls(){
-  await P(greet()); await L(8000);
-  await P("plaisir");
+  await P(greet()); const r1=await L(8000);
+  await P(!r1 && has("timide")?"timide":"plaisir");
   await P("q_sage"); const r=await L(9000);
   await P(isNo(r)?"efforts":"bravo");
   await P("q_cadeau"); await L(11000); await P("r_cadeau");
-  await P("q_question"); const q=await L(10000);
-  if(q && !(isNo(q) && q.split(" ").length<4)) await P(/renne|traineau|rudolph|comete|tornade/.test(norm(q))?"rennes":"secret");
+  if(has("q_autre")){ await P("q_autre"); const r2=await L(9000); if(r2 && !isNo(r2) && has("r_autre")) await P("r_autre"); }
+  if(has("news")) await P("news");
+  for(let i=0;i<(has("q_question2")?2:1);i++){
+    await P(i?"q_question2":"q_question"); const q=await L(10000);
+    if(!q || (isNo(q) && q.split(" ").length<4)) break;
+    await P(faq(q));
+  }
   await P("bye");
 }
 async function scenarioSantaCalls(m){
