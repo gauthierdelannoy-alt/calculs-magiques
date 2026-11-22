@@ -144,9 +144,20 @@ textarea{min-height:84px;resize:vertical}
       <button data-v="pas-sage" class="on">😬 Pas sage</button>
       <button data-v="sage">⭐ Très sage</button>
     </div>
-    <label for="msnDetail">Ce que les lutins ont vu</label>
-    <p class="prefix">« Mes lutins m'ont dit que tu… »</p>
-    <input type="text" id="msnDetail" placeholder="ne ranges pas ta chambre">
+    <div id="betiseBox">
+      <label>Ce que les lutins ont vu</label>
+      <div class="seg" id="msnBetise">
+        <button data-v="b_chambre" class="on">Ne range pas sa chambre</button>
+        <button data-v="b_frere">Se dispute avec son frère</button>
+        <button data-v="b_tape">Tape son frère</button>
+        <button data-v="b_ecoute">N'écoute pas papa et maman</button>
+        <button data-v="b_coucher">Ne veut pas se coucher</button>
+        <button data-v="b_legumes">Ne mange pas ses légumes</button>
+        <button data-v="b_dents">Ne se brosse pas les dents</button>
+        <button data-v="b_grosmots">Dit des gros mots</button>
+        <button data-v="b_general">Pas sage en général</button>
+      </div>
+    </div>
     <div id="toneBox">
       <label>Ton du Père Noël</label>
       <div class="seg" id="msnTone">
@@ -169,18 +180,9 @@ textarea{min-height:84px;resize:vertical}
   </div>
 
   <div class="card">
-    <h3>🎅 Ce que les lutins savent <span class="saved" id="savedNotes">Enregistré ✓</span></h3>
-    <p class="help">Une idée par ligne. Le Père Noël en dira une pendant l'appel, en commençant par « Mes lutins m'ont dit que tu… ».</p>
-    <textarea id="notes" placeholder="adores les dinosaures&#10;as perdu une dent la semaine dernière&#10;fais du judo le mercredi"></textarea>
-  </div>
-
-  <div class="card">
-    <h3>🔊 Voix du Père Noël</h3>
-    <p class="help">Sur iPhone, une voix « améliorée » est bien plus naturelle : Réglages → Accessibilité → Contenu énoncé → Voix → Français → téléchargez « Thomas (amélioré) ». Puis revenez ici.</p>
-    <select id="voiceSel"></select>
-    <label>Grave ↔ aigu</label>
-    <input type="range" id="pitch" min="0.5" max="1.2" step="0.05" style="width:100%">
-    <button class="btn ghost" id="testVoice" style="margin-top:8px">▶︎ Tester la voix</button>
+    <h3>🔊 Voix</h3>
+    <p class="help" id="voiceState">Vérification des enregistrements…</p>
+    <button class="btn ghost" id="testVoice">▶︎ Tester la voix</button>
   </div>
 </section>
 
@@ -194,24 +196,53 @@ textarea{min-height:84px;resize:vertical}
 <script>
 const $=id=>document.getElementById(id);
 const store={get(k,d){try{const v=localStorage.getItem("pn_"+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem("pn_"+k,JSON.stringify(v))}catch(e){}}};
-const S={kids:store.get("kids",[]),notes:store.get("notes",""),voice:store.get("voice",""),pitch:store.get("pitch",0.8),current:null};
+const S={kids:store.get("kids",null)||[{name:"Charlie",age:""},{name:"Marius",age:""}],current:null};
 const pick=a=>a[Math.floor(Math.random()*a.length)];
+const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+function esc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
 
-/* ================= VOIX ================= */
-let voices=[], voice=null;
-function loadVoices(){
-  try{ voices=speechSynthesis.getVoices().filter(v=>/^fr/i.test(v.lang)); }catch(e){ voices=[]; }
-  const score=v=>(/(amélior|enhanced|premium|natural|neural)/i.test(v.name)?10:0)+(/thomas|daniel|nicolas|henri|paul|male|homme/i.test(v.name)?5:0)+(/fr-FR/i.test(v.lang)?2:0);
-  voices.sort((a,b)=>score(b)-score(a));
-  voice = voices.find(v=>v.name===S.voice) || voices[0] || null;
-  const sel=$("voiceSel"); sel.innerHTML="";
-  if(!voices.length){ sel.innerHTML="<option>Voix par défaut</option>"; return; }
-  voices.forEach(v=>{const o=document.createElement("option");o.value=v.name;o.textContent=v.name+" ("+v.lang+")";if(voice&&v.name===voice.name)o.selected=true;sel.appendChild(o);});
+/* ================= LES PHRASES DU PÈRE NOËL ================= */
+const LINES={"g_charlie": "Allô ? Ho ho ho ! Ici le Père Noël, au Pôle Nord ! Oh, mais c'est Charlie ! Comment tu vas ?", "g_marius": "Allô ? Ho ho ho ! Ici le Père Noël, au Pôle Nord ! Oh, mais c'est Marius ! Comment tu vas ?", "g_inconnu": "Allô ? Ho ho ho ! Ici le Père Noël, au Pôle Nord ! Qui est au bout du fil ?", "c_charlie": "Allô ? Ho ho ho ! C'est le Père Noël, au Pôle Nord ! C'est bien toi, Charlie ?", "c_marius": "Allô ? Ho ho ho ! C'est le Père Noël, au Pôle Nord ! C'est bien toi, Marius ?", "r_plaisir": "Ho ho ho, ça me fait tellement plaisir de t'entendre ! Ici, il neige beaucoup, et mes lutins sont très occupés.", "r_timide": "Ho ho ho, tu es un peu timide ? Ce n'est pas grave, le Père Noël aussi était timide quand il était petit !", "q_sage": "Et dis-moi, est-ce que tu as été sage cette année ?", "r_sage_oui": "Ho ho ho ! Mes lutins m'ont dit la même chose. Bravo, continue comme ça !", "r_sage_non": "Ho ho ho, merci d'être honnête ! Il reste encore un peu de temps avant Noël pour faire des efforts. Je compte sur toi !", "r_sage_bof": "Hum hum… Mes lutins vont bien regarder tout ça d'ici Noël.", "q_cadeau": "Qu'est-ce que tu aimerais recevoir pour Noël ?", "r_cadeau": "Oh, très bonne idée ! Je le note tout de suite dans mon grand livre doré. Mais chut, ce sont mes lutins qui décident !", "q_autre": "Il y a autre chose que tu voudrais ?", "r_autre": "C'est noté aussi ! Ho ho ho, tu as plein d'idées.", "news1": "Tu sais, ce matin, un lutin est tombé dans un tas de neige tout entier. Il ne restait que son bonnet qui dépassait ! Ho ho ho !", "news2": "Tu sais quoi ? Hier, Comète a essayé de manger les biscuits de la Mère Noël. Quel gourmand, ce renne !", "news3": "À l'atelier, les lutins ont fabriqué tellement de jouets que la porte ne ferme plus !", "wow1": "Ho ho ho ! C'est formidable !", "wow2": "Oh, c'est très intéressant !", "q_question": "Est-ce que tu as une question pour le Père Noël ?", "q_question2": "Tu as une autre question ?", "a_rennes": "Mes rennes vont très bien ! Comète a mangé trop de carottes hier, et Tornade s'entraîne à voler encore plus vite pour la nuit de Noël.", "a_cheminee": "Ah ça, c'est un secret magique ! Quand il n'y a pas de cheminée, ma poudre d'étoiles m'aide à entrer quand même. Ho ho ho !", "a_lutins": "Mes lutins travaillent jour et nuit à l'atelier. Ils fabriquent les jouets, les emballent, et ils chantent en même temps !", "a_merenoel": "La Mère Noël va très bien ! Elle prépare des biscuits pour toute l'équipe. Elle te fait un gros bisou !", "a_existe": "Ho ho ho ! Tu entends bien ma voix, non ? Tant que tu crois en la magie de Noël, je serai toujours là.", "a_traineau": "Mon traîneau vole grâce à la magie de Noël et à mes rennes. Il peut faire le tour du monde en une seule nuit !", "a_manger": "J'adore les biscuits ! Et un petit verre de lait, ça me donne des forces pour la grande tournée. Et une carotte pour les rennes, s'il te plaît !", "a_age": "Oh, je suis très, très vieux ! Si vieux que j'ai arrêté de compter les bougies. Ho ho ho !", "a_neige": "Ici, au Pôle Nord, il fait très froid et il y a de la neige partout. Mais dans ma maison, il y a un grand feu tout chaud.", "a_quand": "Il ne reste plus beaucoup de dodos avant Noël ! Le soir du 24 décembre, je pars avec mon traîneau.", "a_cadeau": "Ta liste est bien rangée dans mon grand livre. Mes lutins s'en occupent avec beaucoup d'attention !", "a_secret1": "Ho ho ho ! Ça, c'est un secret du Pôle Nord !", "a_secret2": "Oh, très bonne question ! Je demanderai à mes lutins, ils savent tout.", "bye_charlie": "Bon, je dois retourner aider mes lutins à l'atelier. Sois bien sage, Charlie, et fais un gros bisou à papa et maman. Au revoir, ho ho ho !", "bye_marius": "Bon, je dois retourner aider mes lutins à l'atelier. Sois bien sage, Marius, et fais un gros bisou à papa et maman. Au revoir, ho ho ho !", "bye": "Bon, je dois retourner aider mes lutins à l'atelier. Sois bien sage, et fais un gros bisou à papa et maman. Au revoir, ho ho ho !", "s_nouvelle": "Ho ho ho ! Je t'appelle parce que j'ai une très bonne nouvelle. Mes lutins m'ont dit que tu as été très, très sage. Je suis très fier de toi !", "s_content": "Tu es content ?", "s_continue": "Continue comme ça jusqu'à Noël, d'accord ?", "p_intro_doux": "Je t'appelle parce que j'ai besoin de te parler de quelque chose.", "p_intro_ferme": "Je t'appelle parce que j'ai quelque chose d'important à te dire.", "p_intro_tres": "Je t'appelle parce que j'ai quelque chose de très sérieux à te dire.", "b_chambre": "Mes lutins m'ont dit que tu ne ranges pas ta chambre. Est-ce que c'est vrai ?", "b_frere": "Mes lutins m'ont dit que tu te disputes souvent avec ton frère. Est-ce que c'est vrai ?", "b_ecoute": "Mes lutins m'ont dit que tu n'écoutes pas toujours papa et maman. Est-ce que c'est vrai ?", "b_coucher": "Mes lutins m'ont dit que tu ne veux pas aller te coucher le soir. Est-ce que c'est vrai ?", "b_legumes": "Mes lutins m'ont dit que tu ne veux pas manger tes légumes. Est-ce que c'est vrai ?", "b_dents": "Mes lutins m'ont dit que tu ne veux pas te brosser les dents. Est-ce que c'est vrai ?", "b_grosmots": "Mes lutins m'ont dit que tu dis des gros mots. Est-ce que c'est vrai ?", "b_tape": "Mes lutins m'ont dit que tu tapes ton frère. Est-ce que c'est vrai ?", "b_general": "Mes lutins m'ont dit que tu n'as pas été très sage ces derniers temps. Est-ce que c'est vrai ?", "p_nie": "Hum… Mes lutins sont pourtant très attentifs, tu sais. Ils voient beaucoup de choses.", "p_avoue": "Merci de me dire la vérité. C'est déjà très bien d'être honnête.", "p_mid_doux": "Ce n'est pas grave, tout le monde fait des bêtises de temps en temps. Mais j'aimerais beaucoup que tu fasses des efforts.", "p_mid_ferme": "Ça me rend un petit peu triste, tu sais. Je sais que tu peux faire beaucoup mieux que ça.", "p_mid_tres": "Ça ne me fait pas plaisir du tout. Mes lutins vont te regarder très attentivement jusqu'au soir de Noël.", "p_promesse": "Est-ce que tu me promets de faire des efforts ?", "p_repete": "Je n'ai pas bien entendu… Tu me le promets ?", "p_merci": "Ho ho ho ! Merci ! Je suis sûr que tu vas y arriver. Je crois très fort en toi.", "p_confiance": "Je vais quand même te faire confiance. Je crois très fort en toi, et mes lutins aussi.", "p_rappel": "Je rappellerai peut-être pour savoir comment ça se passe. D'accord ?", "p_calin": "Fais un gros câlin à papa et maman de ma part. D'accord ?", "pbye_charlie": "Au revoir, Charlie ! Sois bien sage. Ho ho ho !", "pbye_marius": "Au revoir, Marius ! Sois bien sage. Ho ho ho !", "pbye": "Au revoir ! Sois bien sage. Ho ho ho !"};
+const CLIP_DIR="voix/";
+const clipUrl={};          // id -> URL (blob) une fois chargé
+let clipsReady=0;
+function preloadClips(){
+  const ids=Object.keys(LINES);
+  let missing=0;
+  Promise.all(ids.map(id=>fetch(CLIP_DIR+id+".mp3").then(r=>{ if(!r.ok) throw 0; return r.blob(); })
+    .then(b=>{ clipUrl[id]=URL.createObjectURL(b); clipsReady++; }).catch(()=>{missing++;})))
+  .then(()=>{ const e=$("voiceState"); if(!e) return;
+    e.textContent = missing===0 ? `Voix du Père Noël prête (${clipsReady} phrases enregistrées).`
+      : clipsReady ? `${clipsReady} phrases enregistrées, ${missing} manquantes (remplacées par la voix du téléphone).`
+      : "Pas encore d'enregistrements : c'est la voix du téléphone qui parle en attendant."; });
 }
-if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
-$("voiceSel").onchange=()=>{S.voice=$("voiceSel").value;store.set("voice",S.voice);voice=voices.find(v=>v.name===S.voice)||voice;};
-$("pitch").value=S.pitch; $("pitch").oninput=()=>{S.pitch=parseFloat($("pitch").value);store.set("pitch",S.pitch);};
-$("testVoice").onclick=()=>{ unlockSpeech(); say("Ho ho ho ! Bonsoir les enfants, c'est le Père Noël qui vous parle depuis le Pôle Nord !",true); };
+
+/* ================= SON ================= */
+// Deux lecteurs audio : un pour la sonnerie, un pour le Père Noël.
+// Sur iPhone, chacun doit être "débloqué" pendant un appui sur l'écran.
+const player=new Audio(); player.playsInline=true; player.preload="auto";
+const ringEl=new Audio(); ringEl.playsInline=true; ringEl.loop=true;
+function wav(seconds, fill){ // fabrique un petit fichier son
+  const rate=22050, n=Math.floor(rate*seconds), buf=new ArrayBuffer(44+n*2), v=new DataView(buf);
+  const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  w(0,"RIFF");v.setUint32(4,36+n*2,true);w(8,"WAVE");w(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,"data");v.setUint32(40,n*2,true);
+  for(let i=0;i<n;i++) v.setInt16(44+i*2,Math.max(-1,Math.min(1,fill(i/rate)))*32767,true);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+const SILENCE=wav(0.15,()=>0);
+const RING=wav(3,t=>t<1.2?0.22*(Math.sin(2*Math.PI*440*t)+Math.sin(2*Math.PI*480*t))/2:0);
+const JINGLE=wav(0.7,t=>{const notes=[1318,1568,1760,2093];const k=Math.min(3,Math.floor(t/0.09));const tt=t-k*0.09;return 0.18*Math.sin(2*Math.PI*notes[k]*t)*Math.exp(-tt*9);});
+let unlocked=false;
+function unlockAudio(){
+  try{ player.src=SILENCE; player.play().catch(()=>{}); }catch(e){}
+  try{ ringEl.src=SILENCE; ringEl.loop=false; ringEl.play().catch(()=>{}); }catch(e){}
+  try{ const u=new SpeechSynthesisUtterance("Allô"); u.lang="fr-FR"; u.volume=0.05; u.rate=1.5; speechSynthesis.speak(u);}catch(e){}
+  unlocked=true;
+}
+function startRing(){ try{ ringEl.pause(); ringEl.src=RING; ringEl.loop=true; ringEl.currentTime=0; ringEl.play().catch(()=>{}); }catch(e){} }
+function stopRing(){ try{ ringEl.pause(); }catch(e){} }
+function jingle(){ try{ ringEl.loop=false; ringEl.src=JINGLE; ringEl.play().catch(()=>{}); }catch(e){} }
 
 function setTalking(on){document.querySelectorAll(".santa").forEach(s=>s.classList.toggle("talking",on));}
 function setMode(m){const e=$("mode");
@@ -219,30 +250,33 @@ function setMode(m){const e=$("mode");
   else if(m==="listen"){e.className="mode listen";e.textContent="🎤 À toi ! Réponds au Père Noël";setTalking(false);}
   else{e.className="mode";e.textContent="";setTalking(false);}}
 function subtitle(t,kid){ $("subtitle").innerHTML = kid?'<span class="kid">'+esc(t)+'</span>':esc(t); }
-function esc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
 
-/* Dit un texte, phrase par phrase (plus fiable sur iPhone). */
-function say(text, test){
+/* Joue une phrase enregistrée (ou, à défaut, la lit avec la voix du téléphone). */
+function play(id, test){
   return new Promise(res=>{
     if(!test && !call.active) return res();
-    if(!test){ setMode("speak"); subtitle(text); }
-    if(!("speechSynthesis" in window)){ setTimeout(()=>{setMode(null);res();}, 1200+text.length*55); return; }
-    const parts=text.match(/[^.!?…]+[.!?…]*/g)||[text];
-    let i=0, done=false;
-    const finish=()=>{ if(done) return; done=true; clearTimeout(guard); if(!test) setMode(null); else setTalking(false); res(); };
-    const guard=setTimeout(finish, 4000+text.length*120); // sécurité si l'événement de fin ne vient pas
-    if(test) setTalking(true);
-    const next=()=>{
-      if(i>=parts.length || (!test && !call.active)) return finish();
-      const u=new SpeechSynthesisUtterance(parts[i++].trim());
-      u.lang="fr-FR"; if(voice) u.voice=voice; u.pitch=S.pitch; u.rate=0.9;
-      u.onend=next; u.onerror=next;
-      try{ speechSynthesis.resume(); }catch(e){}
-      speechSynthesis.speak(u);
-    };
-    next();
+    const text=LINES[id]||"";
+    if(!test){ setMode("speak"); subtitle(text); } else setTalking(true);
+    let done=false;
+    const finish=()=>{ if(done) return; done=true; clearTimeout(guard); player.onended=player.onerror=null; if(!test) setMode(null); else setTalking(false); res(); };
+    const guard=setTimeout(finish, 25000);
+    const url=clipUrl[id] || (Object.keys(clipUrl).length?null:null);
+    if(url){
+      player.onended=finish; player.onerror=()=>{ fallbackTTS(text,finish); };
+      try{ player.src=url; player.currentTime=0; const p=player.play(); if(p&&p.catch) p.catch(()=>fallbackTTS(text,finish)); }catch(e){ fallbackTTS(text,finish); }
+    } else fallbackTTS(text,finish);
   });
 }
+function fallbackTTS(text,done){
+  if(!("speechSynthesis" in window)) return setTimeout(done,1200+text.length*55);
+  try{
+    const vs=speechSynthesis.getVoices().filter(v=>/^fr/i.test(v.lang));
+    const voice=vs.find(v=>/(amélior|enhanced|premium)/i.test(v.name))||vs.find(v=>/thomas/i.test(v.name))||vs[0];
+    const u=new SpeechSynthesisUtterance(text); u.lang="fr-FR"; if(voice) u.voice=voice; u.pitch=0.8; u.rate=0.9;
+    u.onend=done; u.onerror=done; speechSynthesis.resume(); speechSynthesis.speak(u);
+  }catch(e){ done(); }
+}
+$("testVoice").onclick=()=>{ unlockAudio(); setTimeout(()=>play("r_plaisir",true),150); };
 
 /* ================= ÉCOUTE ================= */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -260,7 +294,7 @@ function listen(maxMs=9000){
         rec=new SR(); rec.lang="fr-FR"; rec.interimResults=true; rec.continuous=false; rec.maxAlternatives=1;
         rec.onresult=e=>{ let t=""; for(const r of e.results) t+=r[0].transcript; heard=t; subtitle("Toi : "+t,true);
           if(e.results[e.results.length-1].isFinal){ clearTimeout(timer); timer=setTimeout(end,700); } };
-        rec.onerror=e=>{ if(e.error==="not-allowed"||e.error==="service-not-allowed"){ srOk=false; } };
+        rec.onerror=e=>{ if(e.error==="not-allowed"||e.error==="service-not-allowed") srOk=false; };
         rec.onend=()=>{ if(!finished && heard) end(); else if(!finished && srOk){ try{rec.start()}catch(e){} } };
         rec.start();
       }catch(e){ srOk=false; }
@@ -271,157 +305,106 @@ function listen(maxMs=9000){
 $("doneBtn").onclick=()=>{ listenResolve&&listenResolve(); };
 
 /* ================= CE QUE LE PÈRE NOËL COMPREND ================= */
-const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
 function isNo(s){ s=norm(s); return /\b(non|nan|pas trop|pas vraiment|jamais)\b/.test(s); }
-function isYes(s){ s=norm(s); return /\b(oui|ouais|voui|ouaip|bien sur|promis|je promets|d'accord|dac|ok|vrai)\b/.test(s); }
-function giftFrom(s){
-  let t=(s||"").trim(); if(!t) return "";
-  t=t.replace(/^(alors|euh|ben|bah|moi|je voudrais|je veux|j'aimerais|j'voudrais|je voudrai|j'aimerai|j'ai envie d'|comme cadeau)\s*/gi,"")
-     .replace(/^(je voudrais|je veux|j'aimerais|avoir|un cadeau)\s*/gi,"");
-  const w=t.split(/\s+/); return w.slice(0,9).join(" ");
-}
+function isYes(s){ s=norm(s); return /\b(oui|ouais|voui|ouaip|bien sur|promis|je promets|je te promets|d'accord|dac|ok|vrai)\b/.test(s); }
 const FAQ=[
-  [/renne|rudolph|tornade|comete/, ["Mes rennes vont très bien ! Comète a mangé trop de carottes hier, et Tornade s'entraîne à voler encore plus vite pour la nuit de Noël.","Mes huit rennes s'entraînent tous les soirs au-dessus des nuages. Ho ho ho, ils adorent les carottes croquantes !"]],
-  [/chemin/, ["Ah ça, c'est un secret magique ! Quand il n'y a pas de cheminée, ma poudre d'étoiles m'aide à entrer quand même. Ho ho ho !","Je rentre le ventre très fort et hop, la magie de Noël fait le reste !"]],
-  [/lutin/, ["Mes lutins travaillent jour et nuit à l'atelier. Ils fabriquent les jouets, les emballent, et ils chantent en même temps !","Mes lutins sont petits, rapides et très malins. Certains sont même chargés de regarder si les enfants sont sages…"]],
-  [/mere noel|ta femme|maman noel/, ["La Mère Noël va très bien ! Elle prépare des biscuits au gingembre pour toute l'équipe. Elle te fait un gros bisou !"]],
-  [/existe|vrai pere noel|t'es vrai|tu es vrai/, ["Ho ho ho ! Tu entends bien ma voix, non ? Tant que tu crois en la magie de Noël, je serai toujours là."]],
-  [/traineau|vole|voler/, ["Mon traîneau vole grâce à la magie de Noël et à mes rennes. Il peut faire le tour du monde en une seule nuit !"]],
-  [/mange|manger|biscuit|lait|gateau/, ["J'adore les biscuits ! Et un petit verre de lait, ça me donne des forces pour la grande tournée. Et une carotte pour les rennes, s'il te plaît !"]],
-  [/age|quel age|vieux/, ["Oh, je suis très, très vieux ! Si vieux que j'ai arrêté de compter les bougies. Ho ho ho !"]],
-  [/neige|froid|pole nord/, ["Ici au Pôle Nord, il fait très froid et il y a de la neige partout. Mais dans ma maison, il y a un grand feu de cheminée tout chaud."]],
-  [/cadeau|jouet|liste/, ["Ta liste est bien rangée dans mon grand livre. Mes lutins s'en occupent avec beaucoup d'attention !"]],
-  [/quand|combien de dodo|noel c'est quand/, ["Il ne reste plus beaucoup de dodos avant Noël ! Le soir du 24 décembre, je pars avec mon traîneau."]],
+  [/renne|rudolph|tornade|comete/,"a_rennes"],[/chemin/,"a_cheminee"],[/lutin/,"a_lutins"],
+  [/mere noel|ta femme|maman noel/,"a_merenoel"],[/existe|vrai pere noel|t'es vrai|tu es vrai/,"a_existe"],
+  [/traineau|vole|voler/,"a_traineau"],[/mange|manger|biscuit|lait|gateau/,"a_manger"],
+  [/age|quel age|vieux/,"a_age"],[/neige|froid|pole nord/,"a_neige"],[/quand|dodo|combien de jours/,"a_quand"],
+  [/cadeau|jouet|liste/,"a_cadeau"]
 ];
-function answerQuestion(s){ const n=norm(s); for(const [re,ans] of FAQ){ if(re.test(n)) return pick(ans); } return null; }
-const WOW=["Ho ho ho ! C'est formidable !","Oh, c'est très intéressant !","Ho ho ho, tu me fais bien rire !","Ah ça, c'est super !"];
-const NEWS=["Tu sais, ce matin, un lutin est tombé dans un tas de neige tout entier. Il ne restait que son bonnet qui dépassait ! Ho ho ho !","Tu sais quoi ? Hier, Comète a essayé de manger les biscuits de la Mère Noël. Quel gourmand, ce renne !","À l'atelier, les lutins ont fabriqué tellement de jouets que la porte ne ferme plus !"];
+function faq(s){ const n=norm(s); for(const [re,id] of FAQ) if(re.test(n)) return id; return pick(["a_secret1","a_secret2"]); }
 
 /* ================= SCÉNARIOS ================= */
-function kidName(){ const k=S.kids[S.current]; return k&&k.name?k.name:""; }
-function lutinFact(){ const lines=S.notes.split("\n").map(s=>s.trim()).filter(Boolean); return lines.length?pick(lines):""; }
+function kidKey(){ const k=S.kids[S.current]; const n=norm(k&&k.name); return n==="charlie"||n==="marius"?n:""; }
+const named=(prefix,generic)=>{ const k=kidKey(); return k&&LINES[prefix+"_"+k]?prefix+"_"+k:generic; };
 class Stop extends Error{}
-async function sayC(t){ if(!call.active) throw new Stop(); await say(t); if(!call.active) throw new Stop(); }
-async function listenC(ms){ if(!call.active) throw new Stop(); const r=await listen(ms); if(!call.active) throw new Stop(); return r; }
+async function P(id){ if(!call.active) throw new Stop(); await play(id); if(!call.active) throw new Stop(); }
+async function L(ms){ if(!call.active) throw new Stop(); const r=await listen(ms); if(!call.active) throw new Stop(); return r; }
 
-async function askGift(name){
-  await sayC(`Dis-moi${name?" "+name:""}, qu'est-ce que tu aimerais recevoir pour Noël ?`);
-  const g=giftFrom(await listenC(11000));
-  if(g) await sayC(`${g} ! Ho ho ho, très bonne idée. Je le note tout de suite dans mon grand livre doré. Mais je ne promets rien, c'est mes lutins qui décident !`);
-  else await sayC("Ho ho ho ! Je note ça dans mon grand livre doré. Mes lutins vont regarder ça de près !");
-  await sayC("Il y a autre chose que tu voudrais ?");
-  const g2=await listenC(9000);
-  if(g2 && !isNo(g2) && giftFrom(g2)) await sayC(`${giftFrom(g2)}, d'accord ! C'est noté.`);
+async function askGift(){
+  await P("q_cadeau"); await L(11000); await P("r_cadeau");
+  await P("q_autre"); const r=await L(9000);
+  if(r && !isNo(r)) await P("r_autre");
 }
 async function questions(){
   for(let i=0;i<2;i++){
-    await sayC(i===0?"Est-ce que tu as une question pour le Père Noël ?":"Tu as une autre question ?");
-    const q=await listenC(10000);
+    await P(i===0?"q_question":"q_question2");
+    const q=await L(10000);
     if(!q || (isNo(q) && q.split(" ").length<4)) return;
-    const a=answerQuestion(q);
-    await sayC(a || pick(["Ho ho ho ! Ça, c'est un secret du Pôle Nord !","Oh, très bonne question ! Je demanderai à mes lutins, ils savent tout.","Ho ho ho, quelle question ! La magie de Noël a réponse à tout."]));
+    await P(faq(q));
   }
 }
-async function goodbye(name){
-  await sayC(`Bon, je dois retourner aider mes lutins à l'atelier. Sois bien sage${name?", "+name:""}, et fais un gros bisou à papa et maman. Au revoir, ho ho ho !`);
-}
-
 async function scenarioKidCalls(){
-  const name=kidName();
-  await sayC(name?`Allô ? Ho ho ho ! Ici le Père Noël, au Pôle Nord ! Oh, mais c'est ${name} ! Comment tu vas ?`:"Allô ? Ho ho ho ! Ici le Père Noël, au Pôle Nord ! Qui est au bout du fil ?");
-  const r1=await listenC(9000);
-  await sayC(name ? pick(["Ho ho ho, ça me fait tellement plaisir de t'entendre !","Super ! Moi aussi je vais très bien, il neige beaucoup ici !"]) : (r1?"Enchanté ! Ho ho ho, ça me fait plaisir que tu m'appelles !":"Ho ho ho, tu es un peu timide ? Ce n'est pas grave !"));
-  const fact=lutinFact();
-  if(fact){ await sayC(`Tu sais, mes lutins m'ont dit que tu ${fact}. C'est vrai ?`); const r=await listenC(8000); await sayC(r?pick(WOW):"Ho ho ho, mes lutins savent tout !"); }
-  await sayC("Et dis-moi, est-ce que tu as été sage cette année ?");
-  const r2=await listenC(9000);
-  if(isNo(r2)) await sayC("Ho ho ho, merci d'être honnête ! Il reste encore un peu de temps avant Noël pour faire des efforts. Je compte sur toi !");
-  else if(isYes(r2)) await sayC("Ho ho ho ! Mes lutins m'ont dit la même chose. Bravo, continue comme ça !");
-  else await sayC("Hum hum… mes lutins vont bien regarder tout ça d'ici Noël. Ho ho ho !");
-  await askGift(name);
-  await sayC(pick(NEWS));
+  await P(named("g","g_inconnu"));
+  const r1=await L(9000);
+  await P(r1?"r_plaisir":"r_timide");
+  await P("q_sage");
+  const r2=await L(9000);
+  await P(isNo(r2)?"r_sage_non":isYes(r2)?"r_sage_oui":"r_sage_bof");
+  await askGift();
+  await P(pick(["news1","news2","news3"]));
   await questions();
-  await goodbye(name);
+  await P(named("bye","bye"));
 }
-
 async function scenarioSantaCalls(m){
-  const name=kidName(), what=m.detail;
-  await sayC(name?`Allô ? Ho ho ho ! C'est le Père Noël, au Pôle Nord ! C'est bien toi, ${name} ?`:"Allô ? Ho ho ho ! C'est le Père Noël, au Pôle Nord ! Qui est au bout du fil ?");
-  await listenC(8000);
+  await P(named("c","g_inconnu"));
+  await L(8000);
   if(m.type==="sage"){
-    await sayC("Ho ho ho ! Je t'appelle parce que j'ai une très bonne nouvelle.");
-    await sayC(what?`Mes lutins m'ont dit que tu ${what}. Je suis très, très fier de toi !`:"Mes lutins m'ont dit que tu as été très sage. Je suis très fier de toi !");
-    await sayC("Tu es content ?"); await listenC(8000);
-    await sayC("Continue comme ça jusqu'à Noël, d'accord ?"); await listenC(7000);
-    await askGift(name);
-    await goodbye(name);
+    await P("s_nouvelle"); await P("s_content"); await L(8000);
+    await P("s_continue"); await L(7000);
+    await askGift();
+    await P(named("bye","bye"));
     return;
   }
-  // pas sage
-  const intro={doux:"Je t'appelle parce que j'ai besoin de te parler de quelque chose.",ferme:"Je t'appelle parce que j'ai quelque chose d'important à te dire.",["tres-ferme"]:"Je t'appelle parce que j'ai quelque chose de très sérieux à te dire."}[m.tone];
-  await sayC(intro);
-  await sayC(what?`Mes lutins m'ont dit que tu ${what}. Est-ce que c'est vrai ?`:"Mes lutins m'ont dit que tu n'as pas été très sage ces derniers temps. Est-ce que c'est vrai ?");
-  const r=await listenC(10000);
-  if(isNo(r)) await sayC("Hum… mes lutins sont pourtant très attentifs, tu sais. Ils voient beaucoup de choses.");
-  else await sayC("Merci de me dire la vérité. C'est déjà très bien d'être honnête.");
-  const mid={
-    doux:"Ce n'est pas grave, tout le monde fait des bêtises de temps en temps. Mais j'aimerais beaucoup que tu fasses des efforts.",
-    ferme:"Ça me rend un petit peu triste, tu sais. Je sais que tu peux faire beaucoup mieux que ça.",
-    ["tres-ferme"]:"Ça ne me fait pas plaisir du tout. Mes lutins vont te regarder très attentivement jusqu'au soir de Noël."
-  }[m.tone];
-  await sayC(mid);
-  await sayC(`Est-ce que tu me promets de faire des efforts${name?", "+name:""} ?`);
-  let p=await listenC(9000);
-  if(!isYes(p)){ await sayC("Je n'ai pas bien entendu… Tu me le promets ?"); p=await listenC(9000); }
-  if(isYes(p)) await sayC("Ho ho ho ! Merci ! Je suis sûr que tu vas y arriver. Je crois très fort en toi.");
-  else await sayC("Je vais quand même te faire confiance. Je crois très fort en toi, et mes lutins aussi.");
-  await sayC(m.tone==="tres-ferme"?"Je rappellerai peut-être pour savoir comment ça se passe. D'accord ?":"Fais un gros câlin à papa et maman de ma part. D'accord ?");
-  await listenC(7000);
-  await sayC(`Au revoir${name?" "+name:""} ! Sois bien sage. Ho ho ho !`);
+  const t={doux:"doux",ferme:"ferme","tres-ferme":"tres"}[m.tone];
+  await P("p_intro_"+t);
+  await P(m.betise||"b_general");
+  const r=await L(10000);
+  await P(isNo(r)?"p_nie":"p_avoue");
+  await P("p_mid_"+t);
+  await P("p_promesse");
+  let p=await L(9000);
+  if(!isYes(p)){ await P("p_repete"); p=await L(9000); }
+  await P(isYes(p)?"p_merci":"p_confiance");
+  await P(t==="tres"?"p_rappel":"p_calin");
+  await L(7000);
+  await P(named("pbye","pbye"));
 }
 
 /* ================= APPEL ================= */
 const call={active:false,start:0,timer:null,ringT:null};
-let actx=null, ring=null;
-function ac(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();if(actx.state==="suspended")actx.resume();}catch(e){}return actx;}
-function startRing(){const a=ac();if(!a)return;stopRing();const g=a.createGain();g.gain.value=0;g.connect(a.destination);
-  const o1=a.createOscillator(),o2=a.createOscillator();o1.frequency.value=440;o2.frequency.value=480;o1.connect(g);o2.connect(g);o1.start();o2.start();
-  let t=a.currentTime;for(let i=0;i<20;i++){g.gain.setValueAtTime(.12,t);g.gain.setValueAtTime(0,t+1.2);t+=3;}ring={o1,o2,g};}
-function stopRing(){if(ring){try{ring.o1.stop();ring.o2.stop();ring.g.disconnect()}catch(e){}ring=null;}}
-function jingle(){const a=ac();if(!a)return;[1318,1568,1760,2093].forEach((f,i)=>{const o=a.createOscillator(),g=a.createGain();o.type="triangle";o.frequency.value=f;o.connect(g);g.connect(a.destination);const t=a.currentTime+i*.09;g.gain.setValueAtTime(.12,t);g.gain.exponentialRampToValueAtTime(.001,t+.35);o.start(t);o.stop(t+.4);});}
-/* Sur iPhone, la voix doit être "réveillée" pendant un appui : on dit un mot presque muet. */
-let speechUnlocked=false;
-function unlockSpeech(){ try{ ac(); speechSynthesis.cancel(); speechSynthesis.resume(); const u=new SpeechSynthesisUtterance("Allô"); u.lang="fr-FR"; u.volume=0.05; u.rate=1.5; if(voice) u.voice=voice; speechSynthesis.speak(u); speechUnlocked=true; }catch(e){} }
-
 function show(id){document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("active",s.id===id));window.scrollTo(0,0);}
 function setActions(list){const a=$("callActions");a.innerHTML="";list.forEach(([cls,ico,fn])=>{const b=document.createElement("button");b.className="call-btn "+cls;b.textContent=ico;b.onclick=fn;a.appendChild(b);});}
 function resetCallUI(status){show("call");$("callStatus").textContent=status;$("callTimer").textContent="";subtitle(" ");setMode(null);$("doneBtn").classList.remove("show");}
 
 function connect(scenario){
-  clearTimeout(call.ringT); stopRing(); unlockSpeech(); jingle();
+  clearTimeout(call.ringT); stopRing(); jingle();
   $("callAvatar").classList.remove("ringing"); $("callStatus").textContent="En ligne avec le Pôle Nord";
   setActions([["hang","📵",()=>endCall()]]);
   call.start=Date.now(); clearInterval(call.timer);
   call.timer=setInterval(()=>{const s=Math.floor((Date.now()-call.start)/1000);$("callTimer").textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");},1000);
-  // demande le micro tout de suite (pendant le geste) pour la reconnaissance vocale
-  setTimeout(()=>{ scenario().then(()=>endCall()).catch(e=>{ if(!(e instanceof Stop)) { console.error(e); endCall(); } }); },500);
+  setTimeout(()=>{ scenario().then(()=>endCall()).catch(e=>{ if(!(e instanceof Stop)){ console.error(e); endCall(); } }); },800);
 }
 $("callBtn").onclick=()=>{
-  call.active=true; unlockSpeech();
+  unlockAudio(); call.active=true;
   resetCallUI("Appel vers le Pôle Nord…"); $("callAvatar").classList.add("ringing");
-  setActions([["hang","📵",()=>endCall()]]); startRing();
-  call.ringT=setTimeout(()=>connect(scenarioKidCalls),3500);
+  setActions([["hang","📵",()=>endCall()]]);
+  setTimeout(startRing,120);
+  call.ringT=setTimeout(()=>connect(scenarioKidCalls),3800);
 };
 function incoming(m){
   call.active=true;
-  resetCallUI((kidName()?kidName()+", le":"Le")+" Père Noël t'appelle !"); $("callAvatar").classList.add("ringing");
-  setActions([["hang","📵",()=>endCall()],["answer","📞",()=>connect(()=>scenarioSantaCalls(m))]]);
+  const k=S.kids[S.current];
+  resetCallUI((k&&k.name?k.name+", le":"Le")+" Père Noël t'appelle !"); $("callAvatar").classList.add("ringing");
+  setActions([["hang","📵",()=>endCall()],["answer","📞",()=>{ unlockAudio(); connect(()=>scenarioSantaCalls(m)); }]]);
   startRing();
 }
 function endCall(){
   if(!call.active) return;
   call.active=false; clearTimeout(call.ringT); clearInterval(call.timer); stopRing();
-  try{speechSynthesis.cancel()}catch(e){} if(listenResolve) listenResolve();
+  try{player.pause()}catch(e){} try{speechSynthesis.cancel()}catch(e){} if(listenResolve) listenResolve();
   setMode(null); $("callAvatar").classList.remove("ringing"); $("callStatus").textContent="Appel terminé"; setActions([]); subtitle("À bientôt ! 🎄");
   setTimeout(()=>{ if(!call.active){ renderHome(); show("home"); } },1800);
 }
@@ -430,10 +413,10 @@ function endCall(){
 document.querySelectorAll("[data-home]").forEach(b=>b.onclick=()=>{renderHome();show("home");});
 function renderHome(){
   const w=$("homeWho"); w.innerHTML="";
-  const named=S.kids.map((k,i)=>k.name?i:-1).filter(i=>i>=0); if(!named.length) return;
-  if(S.current===null||!named.includes(S.current)) S.current=named[0];
+  const idx=S.kids.map((k,i)=>k.name?i:-1).filter(i=>i>=0); if(!idx.length) return;
+  if(S.current===null||!idx.includes(S.current)) S.current=idx[0];
   w.innerHTML='<div class="lab">Qui appelle le Père Noël ?</div>';
-  named.forEach(i=>{const c=document.createElement("button");c.className="chip"+(S.current===i?" on":"");c.textContent=S.kids[i].name;c.onclick=()=>{S.current=i;renderHome();};w.appendChild(c);});
+  idx.forEach(i=>{const c=document.createElement("button");c.className="chip"+(S.current===i?" on":"");c.textContent=S.kids[i].name;c.onclick=()=>{S.current=i;renderHome();};w.appendChild(c);});
 }
 let gateAns=0;
 $("openParents").onclick=()=>{const a=6+Math.floor(Math.random()*4),b=6+Math.floor(Math.random()*4);gateAns=a*b;$("gq").textContent=a+" × "+b;$("ga").value="";$("gate").classList.add("show");setTimeout(()=>$("ga").focus(),50);};
@@ -449,26 +432,25 @@ function renderKids(){const l=$("kidList");l.innerHTML="";
     n.oninput=()=>{k.name=n.value.trim();saveKids();};a.oninput=()=>{k.age=a.value;saveKids();};
     x.onclick=()=>{S.kids.splice(i,1);S.current=null;saveKids();renderKids();};l.appendChild(r);});}
 $("addKid").onclick=()=>{S.kids.push({name:"",age:""});renderKids();saveKids();const ins=$("kidList").querySelectorAll('input[type=text]');ins[ins.length-1].focus();};
-$("notes").oninput=()=>{S.notes=$("notes").value;store.set("notes",S.notes);flash("savedNotes");};
 
-const msn={kid:0,type:"pas-sage",tone:"doux"};
+const msn={kid:0,type:"pas-sage",tone:"doux",betise:"b_chambre"};
 function renderMsnKids(){const s=$("msnKid");s.innerHTML="";
   const idx=S.kids.map((k,i)=>k.name?i:-1).filter(i=>i>=0);
   if(!idx.length){s.innerHTML='<span style="color:#6b7394;font-size:14px">Ajoutez d\'abord vos enfants plus bas 👇</span>';return;}
   if(!idx.includes(msn.kid))msn.kid=idx[0];
   idx.forEach(i=>{const b=document.createElement("button");b.textContent=S.kids[i].name;b.className=msn.kid===i?"on":"";b.onclick=()=>{msn.kid=i;renderMsnKids();};s.appendChild(b);});}
 function seg(id,key,cb){$(id).querySelectorAll("button").forEach(b=>b.onclick=()=>{$(id).querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));msn[key]=b.dataset.v;cb&&cb();});}
-seg("msnType","type",()=>{ $("toneBox").style.display=msn.type==="sage"?"none":"block"; $("msnDetail").placeholder=msn.type==="sage"?"as très bien aidé à mettre la table":"ne ranges pas ta chambre"; });
-seg("msnTone","tone");
+seg("msnType","type",()=>{ const sage=msn.type==="sage"; $("toneBox").style.display=sage?"none":"block"; $("betiseBox").style.display=sage?"none":"block"; });
+seg("msnTone","tone"); seg("msnBetise","betise");
 $("launchCall").onclick=()=>{
-  ac(); unlockSpeech();
+  unlockAudio();
   S.current=S.kids[msn.kid]&&S.kids[msn.kid].name?msn.kid:null;
-  const m={type:msn.type,tone:msn.tone,detail:$("msnDetail").value.trim().replace(/[.!]+$/,"")};
+  const m={type:msn.type,tone:msn.tone,betise:msn.betise};
   const d=parseInt($("msnDelay").value,10)*1000;
   if(!d){incoming(m);return;}
   renderHome();show("home");setTimeout(()=>{if(!call.active)incoming(m);},d);
 };
-function openParents(){$("notes").value=S.notes;renderKids();renderMsnKids();loadVoices();show("parents");}
+function openParents(){renderKids();renderMsnKids();show("parents");}
 
 /* ================= NEIGE ================= */
 (function(){const c=$("snow"),x=c.getContext("2d");let W,H;const f=[];
@@ -477,7 +459,10 @@ function openParents(){$("notes").value=S.notes;renderKids();renderMsnKids();loa
   for(let i=0;i<70;i++)f.push({x:Math.random(),y:Math.random(),r:1+Math.random()*2.6,s:.0006+Math.random()*.0016,d:Math.random()*6});
   (function loop(){x.clearRect(0,0,W,H);x.fillStyle="rgba(255,255,255,.85)";f.forEach(p=>{p.y+=p.s;p.d+=.01;if(p.y>1.02){p.y=-.02;p.x=Math.random();}x.beginPath();x.arc((p.x+Math.sin(p.d)*.01)*W,p.y*H,p.r*devicePixelRatio,0,7);x.fill();});requestAnimationFrame(loop);})();})();
 
+if(store.get("kids",null)===null) store.set("kids",S.kids);
+preloadClips();
 renderHome();
+
 </script>
 </body>
 </html>
