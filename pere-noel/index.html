@@ -147,23 +147,11 @@ textarea{min-height:84px;resize:vertical}
     <div id="betiseBox">
       <label>Ce que les lutins ont vu</label>
       <div class="seg" id="msnBetise">
-        <button data-v="b_chambre" class="on">Ne range pas sa chambre</button>
-        <button data-v="b_frere">Se dispute avec son frère</button>
-        <button data-v="b_tape">Tape son frère</button>
-        <button data-v="b_ecoute">N'écoute pas papa et maman</button>
-        <button data-v="b_coucher">Ne veut pas se coucher</button>
-        <button data-v="b_legumes">Ne mange pas ses légumes</button>
-        <button data-v="b_dents">Ne se brosse pas les dents</button>
-        <button data-v="b_grosmots">Dit des gros mots</button>
-        <button data-v="b_general">Pas sage en général</button>
-      </div>
-    </div>
-    <div id="toneBox">
-      <label>Ton du Père Noël</label>
-      <div class="seg" id="msnTone">
-        <button data-v="doux" class="on">Doux</button>
-        <button data-v="ferme">Ferme mais gentil</button>
-        <button data-v="tres-ferme">Très sérieux</button>
+        <button data-v="f_chambre" class="on">Ne range pas sa chambre</button>
+        <button data-v="f_frere">Se dispute avec son frère</button>
+        <button data-v="f_ecoute">N'écoute pas papa et maman</button>
+        <button data-v="f_coucher">Ne veut pas se coucher</button>
+        <button data-v="f_general">Pas sage en général</button>
       </div>
     </div>
     <div class="row" style="margin-top:10px">
@@ -202,7 +190,7 @@ const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
 function esc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
 
 /* ================= LES PHRASES DU PÈRE NOËL ================= */
-const LINES={"g_charlie": "Allô ? Ho ho ho ! Ici le Père Noël, au Pôle Nord ! Oh, mais c'est Charlie ! Comment tu vas ?", "g_marius": "Allô ? Ho ho ho ! Ici le Père Noël, au Pôle Nord ! Oh, mais c'est Marius ! Comment tu vas ?", "g_inconnu": "Allô ? Ho ho ho ! Ici le Père Noël, au Pôle Nord ! Qui est au bout du fil ?", "c_charlie": "Allô ? Ho ho ho ! C'est le Père Noël, au Pôle Nord ! C'est bien toi, Charlie ?", "c_marius": "Allô ? Ho ho ho ! C'est le Père Noël, au Pôle Nord ! C'est bien toi, Marius ?", "r_plaisir": "Ho ho ho, ça me fait tellement plaisir de t'entendre ! Ici, il neige beaucoup, et mes lutins sont très occupés.", "r_timide": "Ho ho ho, tu es un peu timide ? Ce n'est pas grave, le Père Noël aussi était timide quand il était petit !", "q_sage": "Et dis-moi, est-ce que tu as été sage cette année ?", "r_sage_oui": "Ho ho ho ! Mes lutins m'ont dit la même chose. Bravo, continue comme ça !", "r_sage_non": "Ho ho ho, merci d'être honnête ! Il reste encore un peu de temps avant Noël pour faire des efforts. Je compte sur toi !", "r_sage_bof": "Hum hum… Mes lutins vont bien regarder tout ça d'ici Noël.", "q_cadeau": "Qu'est-ce que tu aimerais recevoir pour Noël ?", "r_cadeau": "Oh, très bonne idée ! Je le note tout de suite dans mon grand livre doré. Mais chut, ce sont mes lutins qui décident !", "q_autre": "Il y a autre chose que tu voudrais ?", "r_autre": "C'est noté aussi ! Ho ho ho, tu as plein d'idées.", "news1": "Tu sais, ce matin, un lutin est tombé dans un tas de neige tout entier. Il ne restait que son bonnet qui dépassait ! Ho ho ho !", "news2": "Tu sais quoi ? Hier, Comète a essayé de manger les biscuits de la Mère Noël. Quel gourmand, ce renne !", "news3": "À l'atelier, les lutins ont fabriqué tellement de jouets que la porte ne ferme plus !", "wow1": "Ho ho ho ! C'est formidable !", "wow2": "Oh, c'est très intéressant !", "q_question": "Est-ce que tu as une question pour le Père Noël ?", "q_question2": "Tu as une autre question ?", "a_rennes": "Mes rennes vont très bien ! Comète a mangé trop de carottes hier, et Tornade s'entraîne à voler encore plus vite pour la nuit de Noël.", "a_cheminee": "Ah ça, c'est un secret magique ! Quand il n'y a pas de cheminée, ma poudre d'étoiles m'aide à entrer quand même. Ho ho ho !", "a_lutins": "Mes lutins travaillent jour et nuit à l'atelier. Ils fabriquent les jouets, les emballent, et ils chantent en même temps !", "a_merenoel": "La Mère Noël va très bien ! Elle prépare des biscuits pour toute l'équipe. Elle te fait un gros bisou !", "a_existe": "Ho ho ho ! Tu entends bien ma voix, non ? Tant que tu crois en la magie de Noël, je serai toujours là.", "a_traineau": "Mon traîneau vole grâce à la magie de Noël et à mes rennes. Il peut faire le tour du monde en une seule nuit !", "a_manger": "J'adore les biscuits ! Et un petit verre de lait, ça me donne des forces pour la grande tournée. Et une carotte pour les rennes, s'il te plaît !", "a_age": "Oh, je suis très, très vieux ! Si vieux que j'ai arrêté de compter les bougies. Ho ho ho !", "a_neige": "Ici, au Pôle Nord, il fait très froid et il y a de la neige partout. Mais dans ma maison, il y a un grand feu tout chaud.", "a_quand": "Il ne reste plus beaucoup de dodos avant Noël ! Le soir du 24 décembre, je pars avec mon traîneau.", "a_cadeau": "Ta liste est bien rangée dans mon grand livre. Mes lutins s'en occupent avec beaucoup d'attention !", "a_secret1": "Ho ho ho ! Ça, c'est un secret du Pôle Nord !", "a_secret2": "Oh, très bonne question ! Je demanderai à mes lutins, ils savent tout.", "bye_charlie": "Bon, je dois retourner aider mes lutins à l'atelier. Sois bien sage, Charlie, et fais un gros bisou à papa et maman. Au revoir, ho ho ho !", "bye_marius": "Bon, je dois retourner aider mes lutins à l'atelier. Sois bien sage, Marius, et fais un gros bisou à papa et maman. Au revoir, ho ho ho !", "bye": "Bon, je dois retourner aider mes lutins à l'atelier. Sois bien sage, et fais un gros bisou à papa et maman. Au revoir, ho ho ho !", "s_nouvelle": "Ho ho ho ! Je t'appelle parce que j'ai une très bonne nouvelle. Mes lutins m'ont dit que tu as été très, très sage. Je suis très fier de toi !", "s_content": "Tu es content ?", "s_continue": "Continue comme ça jusqu'à Noël, d'accord ?", "p_intro_doux": "Je t'appelle parce que j'ai besoin de te parler de quelque chose.", "p_intro_ferme": "Je t'appelle parce que j'ai quelque chose d'important à te dire.", "p_intro_tres": "Je t'appelle parce que j'ai quelque chose de très sérieux à te dire.", "b_chambre": "Mes lutins m'ont dit que tu ne ranges pas ta chambre. Est-ce que c'est vrai ?", "b_frere": "Mes lutins m'ont dit que tu te disputes souvent avec ton frère. Est-ce que c'est vrai ?", "b_ecoute": "Mes lutins m'ont dit que tu n'écoutes pas toujours papa et maman. Est-ce que c'est vrai ?", "b_coucher": "Mes lutins m'ont dit que tu ne veux pas aller te coucher le soir. Est-ce que c'est vrai ?", "b_legumes": "Mes lutins m'ont dit que tu ne veux pas manger tes légumes. Est-ce que c'est vrai ?", "b_dents": "Mes lutins m'ont dit que tu ne veux pas te brosser les dents. Est-ce que c'est vrai ?", "b_grosmots": "Mes lutins m'ont dit que tu dis des gros mots. Est-ce que c'est vrai ?", "b_tape": "Mes lutins m'ont dit que tu tapes ton frère. Est-ce que c'est vrai ?", "b_general": "Mes lutins m'ont dit que tu n'as pas été très sage ces derniers temps. Est-ce que c'est vrai ?", "p_nie": "Hum… Mes lutins sont pourtant très attentifs, tu sais. Ils voient beaucoup de choses.", "p_avoue": "Merci de me dire la vérité. C'est déjà très bien d'être honnête.", "p_mid_doux": "Ce n'est pas grave, tout le monde fait des bêtises de temps en temps. Mais j'aimerais beaucoup que tu fasses des efforts.", "p_mid_ferme": "Ça me rend un petit peu triste, tu sais. Je sais que tu peux faire beaucoup mieux que ça.", "p_mid_tres": "Ça ne me fait pas plaisir du tout. Mes lutins vont te regarder très attentivement jusqu'au soir de Noël.", "p_promesse": "Est-ce que tu me promets de faire des efforts ?", "p_repete": "Je n'ai pas bien entendu… Tu me le promets ?", "p_merci": "Ho ho ho ! Merci ! Je suis sûr que tu vas y arriver. Je crois très fort en toi.", "p_confiance": "Je vais quand même te faire confiance. Je crois très fort en toi, et mes lutins aussi.", "p_rappel": "Je rappellerai peut-être pour savoir comment ça se passe. D'accord ?", "p_calin": "Fais un gros câlin à papa et maman de ma part. D'accord ?", "pbye_charlie": "Au revoir, Charlie ! Sois bien sage. Ho ho ho !", "pbye_marius": "Au revoir, Marius ! Sois bien sage. Ho ho ho !", "pbye": "Au revoir ! Sois bien sage. Ho ho ho !"};
+const LINES=Object.assign({g_inconnu:"Ho ho ho ! Allô, ici le Père Noël, au Pôle Nord !"},{"g_charlie": "Ho ho ho ! Allô, ici le Père Noël ! Bonjour Charlie !", "g_marius": "Ho ho ho ! Allô, ici le Père Noël ! Bonjour Marius !", "plaisir": "Ça me fait tellement plaisir de t'entendre !", "q_sage": "Dis-moi, tu as été sage cette année ?", "bravo": "Ho ho ho, bravo ! Continue comme ça.", "efforts": "Il reste encore du temps pour faire des efforts. Je compte sur toi !", "q_cadeau": "Qu'est-ce que tu voudrais pour Noël ?", "r_cadeau": "Très bonne idée ! Je le note dans mon grand livre.", "q_question": "Tu as une question pour le Père Noël ?", "secret": "Ho ho ho ! Ça, c'est un secret du Pôle Nord !", "rennes": "Mes rennes vont très bien, ils s'entraînent pour la nuit de Noël !", "bye": "Je dois retourner aider mes lutins. Sois bien sage. Au revoir, ho ho ho !", "intro": "J'ai quelque chose d'important à te dire.", "lutins": "Mes lutins m'ont dit que tu...", "f_chambre": "ne ranges pas ta chambre.", "f_frere": "te disputes avec ton frère.", "f_ecoute": "n'écoutes pas papa et maman.", "f_coucher": "ne veux pas aller te coucher.", "f_general": "n'as pas été très sage.", "f_sage": "as été très, très sage !", "vrai": "C'est vrai ?", "promesse": "Tu me promets de faire des efforts ?", "merci": "Merci ! Je crois très fort en toi.", "fier": "Je suis très fier de toi !"});
 const CLIP_DIR="voix/";
 const clipUrl={};          // id -> URL (blob) une fois chargé
 let clipsReady=0;
@@ -276,7 +264,7 @@ function fallbackTTS(text,done){
     u.onend=done; u.onerror=done; speechSynthesis.resume(); speechSynthesis.speak(u);
   }catch(e){ done(); }
 }
-$("testVoice").onclick=()=>{ unlockAudio(); setTimeout(()=>play("r_plaisir",true),150); };
+$("testVoice").onclick=()=>{ unlockAudio(); setTimeout(()=>play("plaisir",true),150); };
 
 /* ================= ÉCOUTE ================= */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -307,70 +295,39 @@ $("doneBtn").onclick=()=>{ listenResolve&&listenResolve(); };
 /* ================= CE QUE LE PÈRE NOËL COMPREND ================= */
 function isNo(s){ s=norm(s); return /\b(non|nan|pas trop|pas vraiment|jamais)\b/.test(s); }
 function isYes(s){ s=norm(s); return /\b(oui|ouais|voui|ouaip|bien sur|promis|je promets|je te promets|d'accord|dac|ok|vrai)\b/.test(s); }
-const FAQ=[
-  [/renne|rudolph|tornade|comete/,"a_rennes"],[/chemin/,"a_cheminee"],[/lutin/,"a_lutins"],
-  [/mere noel|ta femme|maman noel/,"a_merenoel"],[/existe|vrai pere noel|t'es vrai|tu es vrai/,"a_existe"],
-  [/traineau|vole|voler/,"a_traineau"],[/mange|manger|biscuit|lait|gateau/,"a_manger"],
-  [/age|quel age|vieux/,"a_age"],[/neige|froid|pole nord/,"a_neige"],[/quand|dodo|combien de jours/,"a_quand"],
-  [/cadeau|jouet|liste/,"a_cadeau"]
-];
-function faq(s){ const n=norm(s); for(const [re,id] of FAQ) if(re.test(n)) return id; return pick(["a_secret1","a_secret2"]); }
 
 /* ================= SCÉNARIOS ================= */
 function kidKey(){ const k=S.kids[S.current]; const n=norm(k&&k.name); return n==="charlie"||n==="marius"?n:""; }
-const named=(prefix,generic)=>{ const k=kidKey(); return k&&LINES[prefix+"_"+k]?prefix+"_"+k:generic; };
+function greet(){ const k=kidKey(); return k?"g_"+k:"g_inconnu"; }
 class Stop extends Error{}
 async function P(id){ if(!call.active) throw new Stop(); await play(id); if(!call.active) throw new Stop(); }
 async function L(ms){ if(!call.active) throw new Stop(); const r=await listen(ms); if(!call.active) throw new Stop(); return r; }
 
-async function askGift(){
-  await P("q_cadeau"); await L(11000); await P("r_cadeau");
-  await P("q_autre"); const r=await L(9000);
-  if(r && !isNo(r)) await P("r_autre");
-}
-async function questions(){
-  for(let i=0;i<2;i++){
-    await P(i===0?"q_question":"q_question2");
-    const q=await L(10000);
-    if(!q || (isNo(q) && q.split(" ").length<4)) return;
-    await P(faq(q));
-  }
-}
 async function scenarioKidCalls(){
-  await P(named("g","g_inconnu"));
-  const r1=await L(9000);
-  await P(r1?"r_plaisir":"r_timide");
-  await P("q_sage");
-  const r2=await L(9000);
-  await P(isNo(r2)?"r_sage_non":isYes(r2)?"r_sage_oui":"r_sage_bof");
-  await askGift();
-  await P(pick(["news1","news2","news3"]));
-  await questions();
-  await P(named("bye","bye"));
+  await P(greet()); await L(8000);
+  await P("plaisir");
+  await P("q_sage"); const r=await L(9000);
+  await P(isNo(r)?"efforts":"bravo");
+  await P("q_cadeau"); await L(11000); await P("r_cadeau");
+  await P("q_question"); const q=await L(10000);
+  if(q && !(isNo(q) && q.split(" ").length<4)) await P(/renne|traineau|rudolph|comete|tornade/.test(norm(q))?"rennes":"secret");
+  await P("bye");
 }
 async function scenarioSantaCalls(m){
-  await P(named("c","g_inconnu"));
-  await L(8000);
+  await P(greet()); await L(8000);
   if(m.type==="sage"){
-    await P("s_nouvelle"); await P("s_content"); await L(8000);
-    await P("s_continue"); await L(7000);
-    await askGift();
-    await P(named("bye","bye"));
-    return;
+    await P("lutins"); await P("f_sage"); await P("fier"); await L(7000);
+    await P("q_cadeau"); await L(11000); await P("r_cadeau");
+    await P("bye"); return;
   }
-  const t={doux:"doux",ferme:"ferme","tres-ferme":"tres"}[m.tone];
-  await P("p_intro_"+t);
-  await P(m.betise||"b_general");
-  const r=await L(10000);
-  await P(isNo(r)?"p_nie":"p_avoue");
-  await P("p_mid_"+t);
-  await P("p_promesse");
-  let p=await L(9000);
-  if(!isYes(p)){ await P("p_repete"); p=await L(9000); }
-  await P(isYes(p)?"p_merci":"p_confiance");
-  await P(t==="tres"?"p_rappel":"p_calin");
-  await L(7000);
-  await P(named("pbye","pbye"));
+  await P("intro");
+  await P("lutins"); await P(m.betise||"f_general"); await P("vrai");
+  await L(10000);
+  await P("efforts");
+  await P("promesse"); let p=await L(9000);
+  if(!isYes(p)){ await P("promesse"); p=await L(9000); }
+  await P("merci");
+  await P("bye");
 }
 
 /* ================= APPEL ================= */
@@ -433,19 +390,19 @@ function renderKids(){const l=$("kidList");l.innerHTML="";
     x.onclick=()=>{S.kids.splice(i,1);S.current=null;saveKids();renderKids();};l.appendChild(r);});}
 $("addKid").onclick=()=>{S.kids.push({name:"",age:""});renderKids();saveKids();const ins=$("kidList").querySelectorAll('input[type=text]');ins[ins.length-1].focus();};
 
-const msn={kid:0,type:"pas-sage",tone:"doux",betise:"b_chambre"};
+const msn={kid:0,type:"pas-sage",betise:"f_chambre"};
 function renderMsnKids(){const s=$("msnKid");s.innerHTML="";
   const idx=S.kids.map((k,i)=>k.name?i:-1).filter(i=>i>=0);
   if(!idx.length){s.innerHTML='<span style="color:#6b7394;font-size:14px">Ajoutez d\'abord vos enfants plus bas 👇</span>';return;}
   if(!idx.includes(msn.kid))msn.kid=idx[0];
   idx.forEach(i=>{const b=document.createElement("button");b.textContent=S.kids[i].name;b.className=msn.kid===i?"on":"";b.onclick=()=>{msn.kid=i;renderMsnKids();};s.appendChild(b);});}
 function seg(id,key,cb){$(id).querySelectorAll("button").forEach(b=>b.onclick=()=>{$(id).querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));msn[key]=b.dataset.v;cb&&cb();});}
-seg("msnType","type",()=>{ const sage=msn.type==="sage"; $("toneBox").style.display=sage?"none":"block"; $("betiseBox").style.display=sage?"none":"block"; });
-seg("msnTone","tone"); seg("msnBetise","betise");
+seg("msnType","type",()=>{ const sage=msn.type==="sage"; $("betiseBox").style.display=sage?"none":"block"; });
+seg("msnBetise","betise");
 $("launchCall").onclick=()=>{
   unlockAudio();
   S.current=S.kids[msn.kid]&&S.kids[msn.kid].name?msn.kid:null;
-  const m={type:msn.type,tone:msn.tone,betise:msn.betise};
+  const m={type:msn.type,betise:msn.betise};
   const d=parseInt($("msnDelay").value,10)*1000;
   if(!d){incoming(m);return;}
   renderHome();show("home");setTimeout(()=>{if(!call.active)incoming(m);},d);
